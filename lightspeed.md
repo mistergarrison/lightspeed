@@ -59,6 +59,10 @@ Suns are the static, central pillars of gameplay.
         (unless upgraded to level 2+). They start with a garrison of units that
         must be defeated to capture the Sun. Visible on the minimap as a grey
         dot.
+*   **State History (Crucial for LSD):** To correctly render the perceived
+    state, each Sun must maintain a history buffer (at least 50 entries) of
+    state checkpoints. Each checkpoint stores the timestamp, unit count, owner,
+    level, and production rate.
 
 #### **B. Units (Army / Resource)**
 
@@ -91,6 +95,10 @@ Units are the mobile, commandable entities.
         below level 2.5, the individual unit sprites are hidden. Instead, a
         single colored icon representing the fleet is displayed, accompanied by
         a numerical display indicating the total number of units in that fleet.
+*   **Fleet Visibility Window:** A fleet launched at time `T_launch` from Source
+    (dist `D_src` from observer) to Target (dist `D_tgt` from observer) arriving
+    at `T_arrival` is only visible to the observer during the specific time
+    window: `[T_launch + D_src/C, T_arrival + D_tgt/C]`.
 *   **Properties:** Units have no individual health. They are discrete entities:
     they either exist or they are destroyed. They serve as a single resource for
     combat, capture, and upgrading.
@@ -140,7 +148,8 @@ Units are the mobile, commandable entities.
         visually confirmed by a bright circle of the player's color appearing
         around the Sun.
     *   **Multiple Suns:** Left-click and drag to create a selection box that
-        encompasses all desired friendly Suns.
+        encompasses all desired friendly Suns. Implement a movement threshold
+        (e.g., 5 pixels) to distinguish between a click and the start of a drag.
     *   **Add/Remove Selection:** Hold Shift while clicking to toggle selection
         of individual Suns.
 *   **Issuing Commands & Light Speed (Homeworld Model):**
@@ -150,7 +159,8 @@ Units are the mobile, commandable entities.
             *   **Click Target Sun:** Deploys 50% of units from selected Source
                 Sun(s).
             *   **Double-Click Target Sun:** Deploys 100% of units from selected
-                Source Sun(s).
+                Source Sun(s). Implement a timing threshold (e.g., 300ms) to
+                detect double-clicks.
         *   **Upgrade:** Press the 'U' key.
     3.  A command icon is dispatched from the *Player's Homeworld* towards the
         *Source Sun(s)* at light speed.
@@ -174,13 +184,12 @@ Units are the mobile, commandable entities.
     authoritative "True State" which is always current. All game logic (unit
     production, movement, combat outcomes) is resolved instantly within this
     state.
-*   **Delayed Visibility:** The player does not see the True State. They see a
-    "Perceived State" which is a delayed version of reality. When an event
-    (e.g., a battle starting, a sun being captured) happens at a location in the
-    True State, that event is timestamped. It will only be rendered on the
-    player's screen after a delay equal to `distance_from_event_to_Homeworld /
-    C`. This means the player is effectively watching historical replays of
-    events that have already concluded in the True State.
+*   **Delayed Visibility (Interpolation):** The player does not see the True
+    State. They see a "Perceived State" which is a delayed version of reality.
+    To render this, calculate the perceived time `T_perceived = T_current -
+    (distance_to_homeworld / C)`. Find the latest historical checkpoint for the
+    Sun before `T_perceived` and linearly interpolate the unit count forward to
+    `T_perceived` using the production rate at that checkpoint.
 *   **Minimap Delay:** The minimap also reflects these information delays.
 
 #### **B. Combat: A War of Attrition**
@@ -188,10 +197,13 @@ Units are the mobile, commandable entities.
 *   **Trigger:** Combat occurs exclusively at Suns. When a fleet of units
     arrives at a Sun that has units of an opposing faction (either orbiting or
     from another arriving fleet), a battle is initiated in the True State.
-*   **Resolution:** Combat is a direct, numerical exchange. For every attacking
-    unit, one defending unit is destroyed. It is a strict 1-for-1 trade until
-    one side is eliminated. This is resolved instantly in the True State; the
-    player sees the battle play out visually with the corresponding LSD.
+*   **Resolution Loop:** Combat is resolved instantly in the True State.
+    1.  Identify all factions present at the Sun.
+    2.  Sort factions by unit count (descending).
+    3.  If more than one faction remains, subtract the unit count of the second
+        strongest from the strongest. Eliminate the second strongest.
+    4.  Repeat until 0 or 1 faction remains.
+    5.  The player sees the battle play out visually with the corresponding LSD.
 
 #### **C. Capturing a Sun (Expansion)**
 
@@ -212,6 +224,8 @@ Units are the mobile, commandable entities.
 *   **The Cost:** Units are consumed from the orbiting swarm to upgrade.
 *   **The Process:** Upon command arrival, the upgrade timer starts (25
     seconds).
+*   **Cancellation:** If hostile units arrive at the Sun during the upgrade
+    timer, the upgrade is immediately cancelled and the timer resets.
 *   **The Reward:** After the timer completes, the Sun's level increases,
     boosting production rate and maximum unit capacity. All visual cues and
     production changes are subject to LSD to the Player's Homeworld.
@@ -271,6 +285,10 @@ Level 4           | 6.0            | 1500
     to 50,000) performantly, the project must use the **PixiJS** 2D WebGL
     rendering framework. PixiJS can be included via a single `<script>` tag from
     a CDN.
+*   **Particle Pooling:** To maintain performance with thousands of unit
+    particles, implement an object pool for the PixiJS sprites used for units.
+    Pre-allocate a pool of sprites and reuse them instead of creating/destroying
+    them every frame.
 *   **Level of Detail (LOD) Implementation:** The visibility of unit sprites
     must be dynamically managed based on the camera's zoom level (the scaling
     factor of the PixiJS stage/viewport). When the scale drops below a

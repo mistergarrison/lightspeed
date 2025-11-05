@@ -52,13 +52,13 @@ Suns are the static, central pillars of gameplay.
     *   **Player-Owned (Blue):** Actively and automatically produces blue Units
         up to its capacity. Can be selected by the player to issue commands or
         to be upgraded. Visible on the minimap as a blue dot.
-    *   **Enemy-Owned (Red, Green):** Functions identically to a player Sun but
-        for an AI opponent. They are primary targets for attack. Visible on the
-        minimap as a dot of their respective color.
-    *   **Neutral (Grey/White):** Possess a dull grey core and do not produce
-        units. They start with a garrison of grey/white units that must be
-        defeated to capture the Sun. These garrisons do not regenerate. Visible
-        on the minimap as a grey/white dot.
+    *   **Enemy-Owned (Red, Green, Purple, etc.):** Functions identically to a
+        player Sun but for an AI opponent. They are primary targets for attack.
+        Visible on the minimap as a dot of their respective color.
+    *   **Neutral (Grey):** Possess a dull grey core and do not produce units
+        (unless upgraded to level 2+). They start with a garrison of units that
+        must be defeated to capture the Sun. Visible on the minimap as a grey
+        dot.
 
 #### **B. Units (Army / Resource)**
 
@@ -66,14 +66,14 @@ Units are the mobile, commandable entities.
 
 *   **Visual Design & Level of Detail (LOD):** The rendering of units must adapt
     to the camera's zoom level for visual clarity and performance.
-    *   **Detailed View (Zoom Level >= 3):** When the camera is zoomed in to
-        level 3 or higher, Units are rendered as small, glowing motes of light
+    *   **Detailed View (Zoom Level >= 2.5):** When the camera is zoomed in to
+        level 2.5 or higher, Units are rendered as small, glowing motes of light
         (simple circles in PixiJS), matching the color of their parent Sun. The
         number of visible circles orbiting a Sun must exactly equal the unit
-        count for that Sun.
-    *   **Simplified View (Zoom Level < 3):** When the view is zoomed out below
-        level 3, individual unit sprites must be hidden. The presence of units
-        is indicated solely by the numerical display above the Sun.
+        count for that Sun (capped at 50 for visual clarity).
+    *   **Simplified View (Zoom Level < 2.5):** When the view is zoomed out
+        below level 2.5, individual unit sprites must be hidden. The presence of
+        units is indicated solely by the numerical display above the Sun.
 *   **Default Behavior (Orbiting):** When not under a command, Units produced by
     a Sun will form a chaotic, swirling cloud of light motes around it, up to a
     Sun's capacity. The movement should be random and swirly, not rigid circular
@@ -85,12 +85,12 @@ Units are the mobile, commandable entities.
     pass through each other harmlessly in deep space. The rendering of these
     in-transit fleets must adhere to the same Level of Detail (LOD) rules as
     units orbiting a Sun:
-    *   **Detailed View (Zoom Level >= 3):** The fleet is rendered as a swarm of
-        individual, glowing motes of light, matching their faction color.
-    *   **Simplified View (Zoom Level < 3):** When the view is zoomed out below
-        level 3, the individual unit sprites are hidden. Instead, a single
-        colored icon representing the fleet is displayed, accompanied by a
-        numerical display indicating the total number of units in that fleet.
+    *   **Detailed View (Zoom Level >= 2.5):** The fleet is rendered as a swarm
+        of individual, glowing motes of light, matching their faction color.
+    *   **Simplified View (Zoom Level < 2.5):** When the view is zoomed out
+        below level 2.5, the individual unit sprites are hidden. Instead, a
+        single colored icon representing the fleet is displayed, accompanied by
+        a numerical display indicating the total number of units in that fleet.
 *   **Properties:** Units have no individual health. They are discrete entities:
     they either exist or they are destroyed. They serve as a single resource for
     combat, capture, and upgrading.
@@ -103,9 +103,9 @@ Units are the mobile, commandable entities.
     light. This visual cue indicates the command is in transit. Players cannot
     see enemy commands in transit.
 *   **Maximum Delay:** The time it takes for light to cross the entire galaxy
-    (from one edge to the opposite) is calibrated to be approximately 60
-    seconds. The delay to any given Sun is proportional to its distance from the
-    Player's Homeworld.
+    (from one edge to the opposite) is calibrated to be approximately 33 seconds
+    (2000 / 60). The delay to any given Sun is proportional to its distance from
+    the Player's Homeworld.
 *   **Icons:**
     *   **Attack/Capture:** A sharp, arrow-like icon.
     *   **Upgrade:** A swirling, nova-like icon.
@@ -114,28 +114,36 @@ Units are the mobile, commandable entities.
 
 ### **III. Player Interaction & Controls (The Command System)**
 
+*   **Setup Screen:**
+    *   Before the game starts, a title screen allows the player to configure
+        the game.
+    *   **Number of Stars:** Slider to adjust the total number of suns (approx
+        0-200+).
+    *   **Number of Opponents:** Slider to adjust AI count (1-20).
+    *   **Game Speed:** Slider to adjust the simulation speed multiplier.
 *   **Navigation:**
     *   **Zoom:** Scrolling the mouse wheel zooms the view in and out, centered
         on the current mouse cursor position. The zoom level is a numerical
-        scale where a zoom of 1.0 shows the entire 1000x1000 unit galaxy. A zoom
-        of 2.0 shows a 500x500 unit area (a quarter of the map), a zoom of 4.0
-        shows a 250x250 area, and so on. On initialization, the view is centered
-        on the player's Homeworld at an initial zoom level of 5.0. This control
-        also governs the Level of Detail (LOD) switch for unit rendering.
+        scale where a zoom of 1.0 shows the entire 2000x2000 unit galaxy. On
+        initialization, the view is centered on the player's Homeworld at an
+        initial zoom level of 1.5. This control also governs the Level of Detail
+        (LOD) switch for unit rendering (threshold 2.5).
     *   **Panning:** Moving the mouse cursor to the edges of the screen will pan
         the camera in that direction. The camera can also be panned using the
-        WASD or arrow keys. screen. This shows a scaled-down representation of
-        the entire galaxy, with colored dots indicating the presence and
-        ownership of Suns. Clicking on a location in the minimap instantly jumps
-        the main view to that area.
+        WASD or arrow keys, or by dragging with the Right Mouse Button.
+    *   **Minimap:** Shows a scaled-down representation of the entire galaxy,
+        with colored dots indicating the presence and ownership of Suns.
+        Clicking on a location in the minimap instantly jumps the main view to
+        that area.
 *   **Selection:**
     *   **Single Sun:** A single click on a player-owned Sun selects it. This is
         visually confirmed by a bright circle of the player's color appearing
         around the Sun.
-    *   **Multiple Suns:** Click and drag to create a selection box that
+    *   **Multiple Suns:** Left-click and drag to create a selection box that
         encompasses all desired friendly Suns.
+    *   **Add/Remove Selection:** Hold Shift while clicking to toggle selection
+        of individual Suns.
 *   **Issuing Commands & Light Speed (Homeworld Model):**
-
     1.  Select one or more player-owned Source Sun(s).
     2.  Issue a command:
         *   **Attack/Capture:**
@@ -143,8 +151,7 @@ Units are the mobile, commandable entities.
                 Sun(s).
             *   **Double-Click Target Sun:** Deploys 100% of units from selected
                 Source Sun(s).
-        *   **Upgrade:** Click-and-Hold on the selected Source Sun for 0.5
-            seconds.
+        *   **Upgrade:** Press the 'U' key.
     3.  A command icon is dispatched from the *Player's Homeworld* towards the
         *Source Sun(s)* at light speed.
     4.  The action (Unit Deployment or Upgrade) will only commence *after* the
@@ -153,8 +160,11 @@ Units are the mobile, commandable entities.
         specified units launch towards the Target Sun at the defined Unit Speed.
     6.  **Upgrade:** Upon command arrival, the upgrade process begins at the
         Source Sun.
-
-*   **Rally Lines:** Not implemented in this version.
+*   **Hotkeys:**
+    *   **'U':** Upgrade selected Suns.
+    *   **'F':** Toggle Full Screen.
+    *   **'H':** Toggle Help panel.
+    *   **'L':** Toggle Leaderboard.
 
 ### **IV. Core Gameplay Mechanics: The Strategic Actions**
 
@@ -200,65 +210,60 @@ Units are the mobile, commandable entities.
 #### **D. Upgrading a Sun (Economic Investment)**
 
 *   **The Cost:** Units are consumed from the orbiting swarm to upgrade.
-*   **The Process:** Consumed units are absorbed, bright "nova" effect.
-*   **The Reward:** Increased production rate and maximum unit capacity. All
-    visual cues and production changes are subject to LSD to the Player's
-    Homeworld.
+*   **The Process:** Upon command arrival, the upgrade timer starts (25
+    seconds).
+*   **The Reward:** After the timer completes, the Sun's level increases,
+    boosting production rate and maximum unit capacity. All visual cues and
+    production changes are subject to LSD to the Player's Homeworld.
 
 ### **V. Game Balance & Setup**
 
 #### **A. Constants:**
 
-Parameter        | Value           | Notes
----------------- | --------------- | ----------------------------
-Galaxy Width     | 1000 units      | Arbitrary units for distance
-Galaxy Height    | 1000 units      | Arbitrary units for distance
-Light Speed (C)  | 16.67 units/sec | Galaxy Width / 60 seconds
-Unit Speed       | 8.33 units/sec  | 0.5 * C
-**Sun Levels**   | **Lvl 1**       | **Lvl 2**
-Prod. Rate (u/s) | 1               | 2
-Max Capacity     | 100             | 150
-Upgrade Cost     | -               | 80 units
-**Neutral Suns** | **Small**       | **Medium**
-Initial Garrison | 15              | 30
-Base Level       | 1               | 1
+Parameter         | Value          | Notes
+----------------- | -------------- | ---------------------------------
+Galaxy Width      | 2000 units     |
+Galaxy Height     | 2000 units     |
+Galaxy Radius     | 950 units      | Suns generated within this radius
+Light Speed (C)   | 60 units/sec   |
+Unit Speed        | 20 units/sec   |
+Upgrade Duration  | 25 seconds     | Time to complete an upgrade
+Min Sun Spacing   | 80 units       |
+**Sun Levels**    | **Rate (u/s)** | **Capacity**
+Level 0 (Neutral) | 0              | 50
+Level 1           | 0.4            | 100
+Level 2           | 1.0            | 250
+Level 3           | 2.4            | 600
+Level 4           | 6.0            | 1500
 
 #### **B. Map Generation:**
 
-*   **Shape:** The game takes place in a 1000x1000 unit square area. However,
-    Suns are only generated within a circular region of radius 500 centered in
-    this square.
-*   **Number of Suns:** 200
-*   **Players:** 1 Player (Blue) vs 2 AI (Red, Green)
+*   **Shape:** Circular region of radius 950 centered in a 2000x2000 square.
+*   **Number of Suns:** Adjustable via slider (default 150).
+*   **Players:** 1 Player (Blue) vs Adjustable AI (1-20).
 *   **Distribution:** Suns are distributed within the circular galaxy. The
-    distribution of Suns should be four times higher at the exact center of the
-    galaxy than at the outermost edge (radius 500). The density should decrease
-    linearly with the distance from the center.
-*   **Minimum Distance:** Maintain a minimum distance of 20 units between Sun
-    centers.
+    distribution of Suns should be higher at the center and decrease linearly
+    towards the edge.
 *   **Starting Conditions:**
     *   The Player (Blue) starts with one Level 1 Sun and 50 units, located on
-        the outer rim of the galaxy.
-    *   The two AI players (Red and Green) each start with one Level 1 Sun and
-        50 units, located on the outer rim, on opposite sides of the galaxy from
-        each other, and roughly equidistant from the player's start.
-    *   Neutral suns are randomly assigned Small, Medium, or Large types.
+        the outer rim of the galaxy (radius * 0.9).
+    *   AI players start with one Level 1 Sun and 50 units, also located on the
+        outer rim, distributed evenly.
+    *   Neutral suns are randomly assigned levels and unit counts.
 
 #### **C. AI Opponent Behavior:**
 
 *   **Goal:** Expand and eliminate others.
 *   **Decision Triggers:** AI evaluates actions every 5-10 seconds.
 *   **Priorities:**
-    1.  **Expand:** Attack nearest Neutral Sun if local forces > 1.5x garrison.
-    2.  **Upgrade:** Upgrade a Sun if unit count > 1.8x upgrade cost and no
-        immediate threats.
-    3.  **Attack:** Attack weakest enemy Sun if combined forces from nearby
-        Suns > 1.2x enemy units.
+    1.  **Upgrade:** Upgrade a Sun if unit count > 1.5x upgrade cost and level
+        < 3.
+    2.  **Attack:** Attack weakest enemy Sun within 800 units range if combined
+        forces > 1.2x enemy units + 10. Prioritize neutral suns.
 *   **LSD Compliance:** AI commands and information are ALSO subject to Light
     Speed Delay, calculated from their own Homeworld. The AI does not cheat; it
     does not have access to the "True Game State". It must make all decisions
-    based on its own "Perceived State" of the galaxy, which is just as delayed
-    and potentially out-of-date as the player's.
+    based on its own "Perceived State" of the galaxy.
 
 ### VI. Implementation Notes
 
@@ -269,10 +274,6 @@ Base Level       | 1               | 1
 *   **Level of Detail (LOD) Implementation:** The visibility of unit sprites
     must be dynamically managed based on the camera's zoom level (the scaling
     factor of the PixiJS stage/viewport). When the scale drops below a
-    predefined threshold (zoomed out), the visibility of the unit sprites should
-    be disabled (e.g., setting a container's `visible` property to `false`).
-    This prevents rendering thousands of sub-pixel sprites, drastically
-    improving performance.
-*   A tranquil, procedurally generated soundscape can be attempted using the Web
-    Audio API for subtle background ambience and simple tones for events (e.g.,
-    command issued, battle, capture). No external audio files.
+    predefined threshold (2.5), the visibility of the unit sprites should be
+    disabled.
+*   **Sound:** Optional.

@@ -2,1543 +2,1317 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Light Speed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
     <style>
-        body {
-            background-color: #000008;
-            color: #fff;
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none; /* Prevent text selection during drag */
-        }
-        canvas {
-            display: block;
-        }
-        #gameCanvas {
-            cursor: crosshair;
-        }
-        #minimap {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            border: 1px solid rgba(100, 150, 255, 0.3);
-            background-color: rgba(0, 0, 8, 0.8);
-            cursor: pointer;
-        }
-        #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 8, 0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            display: none;
-        }
-        #gameOverMessage {
-            font-size: 3em;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        #statsCanvas {
-            border: 1px solid #333;
-            background-color: #101018;
-        }
-        button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-            background: #222;
-            color: #fff;
-            border: 1px solid #555;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #444;
-        }
-        #instructions {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            text-align: right;
-            pointer-events: none;
-        }
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: #eee; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .ui-element { pointer-events: auto; }
+        /* Range slider styles */
+        input[type=range] { height: 26px; -webkit-appearance: none; margin: 10px 0; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #3b82f6; border-radius: 1px; }
+        input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ffffff; cursor: pointer; -webkit-appearance: none; margin-top: -5px; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <canvas id="minimap"></canvas>
-    <div id="instructions">
-        <b>Light Speed</b><br>
-        Zoom: Scroll | Pan: WASD or Edge Scroll<br>
-        Select: Click or Drag Circle (Hold Shift to Add)<br>
-        Attack 50%: Click Target | Attack 100%: Double-Click Target<br>
-        Upgrade: Hold Click on Selected Sun (0.5s)<br>
-        Rally: Drag from Friendly to Friendly<br>
-        <i>Information and Commands are delayed by the Speed of Light.</i>
+
+<!-- Main Canvas will be appended by Pixi -->
+
+<!-- Title Screen Overlay -->
+<div id="title-screen" class="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-50 p-5">
+    <h1 class="text-5xl font-bold text-blue-400 uppercase tracking-widest mb-4">Light Speed</h1>
+    <div class="max-w-lg bg-gray-900 p-6 rounded-xl border-2 border-blue-900 shadow-lg shadow-blue-900/20">
+        <p class="text-gray-300 mb-6 leading-relaxed">
+            A real-time strategy game where information travels at the speed of light. 
+            Command your empire, but beware: what you see is in the past.
+            Wait for light to travel. Trust nothing.
+        </p>
+
+        <div class="space-y-4 mb-6 text-sm text-gray-400">
+            <div><strong class="text-gray-300">WASD / Right-Drag:</strong> Pan Camera</div>
+            <div><strong class="text-gray-300">Scroll:</strong> Zoom</div>
+            <div><strong class="text-gray-300">Left-Drag:</strong> Select Box</div>
+            <div><strong class="text-gray-300">Left Click:</strong> Select / Attack (50%)</div>
+            <div><strong class="text-gray-300">Double Left Click:</strong> Attack (100%)</div>
+            <div><strong class="text-gray-300">Shift + Click:</strong> Add/Remove Selection</div>
+            <div><strong class="text-gray-300">Press 'U':</strong> Upgrade Selected Suns</div>
+            <div><strong class="text-gray-300">Press 'F':</strong> Toggle Full Screen</div>
+            <div><strong class="text-gray-300">Press 'H':</strong> Toggle Help</div>
+            <div><strong class="text-gray-300">Press 'L':</strong> Toggle Leaderboard</div>
+        </div>
+
+        <div class="space-y-4 mb-8">
+            <div>
+                <label class="flex justify-between text-gray-300 text-sm mb-1">
+                    <span>Number of Stars</span>
+                    <span id="val-stars" class="text-blue-400">152</span>
+                </label>
+                <input type="range" id="opt-stars" min="0" max="100" step="1" value="21" class="w-full" oninput="const val = Math.round(50 * Math.pow(200, this.value / 100)); document.getElementById('val-stars').textContent = val">
+            </div>
+            <div>
+                <label class="flex justify-between text-gray-300 text-sm mb-1">
+                    <span>Number of Opponents</span>
+                    <span id="val-ai" class="text-blue-400">2</span>
+                </label>
+                <input type="range" id="opt-ai" min="1" max="20" value="2" class="w-full" oninput="document.getElementById('val-ai').textContent = this.value">
+            </div>
+            <div>
+                <label class="flex justify-between text-gray-300 text-sm mb-1">
+                    <span>Game Speed</span>
+                    <span id="val-speed" class="text-blue-400">1.0x</span>
+                </label>
+                <input type="range" id="opt-speed" min="0" max="100" step="1" value="37" class="w-full" oninput="const val = 0.1 * Math.pow(500, this.value / 100); document.getElementById('val-speed').textContent = val.toFixed(1) + 'x'">
+            </div>
+        </div>
+
+        <button id="start-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wider rounded transition duration-200">
+            Initialize Universe
+        </button>
     </div>
-    <div id="gameOverScreen">
-        <div id="gameOverMessage"></div>
-        <canvas id="statsCanvas" width="800" height="400"></canvas>
-        <button onclick="initGame()">Restart Galaxy</button>
+</div>
+
+<!-- UI Overlay -->
+<div id="ui-layer" class="flex flex-col justify-between p-4 hidden">
+    <div class="w-full flex items-start justify-between">
+        <div class="flex flex-col gap-2">
+            <div id="leaderboard" class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56">
+                 <h3 class="text-sm font-bold text-blue-400 mb-2 uppercase tracking-widest">Leaderboard</h3>
+                 <ul id="leaderboard-list" class="flex flex-col gap-1 text-xs"></ul>
+            </div>
+            <div id="help-panel" class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56 text-sm hidden">
+                <h1 class="text-xl font-bold text-blue-400 uppercase tracking-widest">Light Speed</h1>
+                <div class="text-xs text-gray-400 mt-1">
+                    Left-Drag Select | Right-Click to Attack<br>
+                    Press 'U' to Upgrade selected Suns<br>
+                    Press 'F' for Full Screen<br>
+                    Press 'H' to Toggle Help<br>
+                    Press 'L' to Toggle Leaderboard
+                </div>
+                <div id="debug-info" class="text-xs text-red-500 mt-2 hidden"></div>
+            </div>
+        </div>
+        <div class="flex flex-col gap-2 items-end ml-auto">
+             <!-- Minimap Container -->
+            <div id="minimap-container" class="w-48 h-48 bg-black border-2 border-gray-700 relative overflow-hidden ui-element">
+                <canvas id="minimap" width="200" height="200" class="w-full h-full cursor-crosshair"></canvas>
+            </div>
+            <div class="text-xs text-gray-500 text-right">PERCEIVED REALITY</div>
+        </div>
     </div>
+</div>
 
-    <script>
-        // --- Configuration ---
-        const CONFIG = {
-            GALAXY_SIZE: 20000,
-            MAX_DELAY_SECONDS: 60, // Max time for light to cross the galaxy
-            SUN_COUNT: 150,
-            UNIT_SPEED_RATIO: 0.3, // Units travel at 30% the speed of light
-            EDGE_SCROLL_MARGIN: 30,
-            EDGE_SCROLL_SPEED: 600,
-            ZOOM_SENSITIVITY: 0.001,
-            MIN_ZOOM: 0.08,
-            MAX_ZOOM: 3.0,
-            PRODUCTION_RATE: 0.5,
-            BASE_CAPACITY: 80,
-            BASE_CAPTURE_COST: 60,
-            UPGRADE_COST_BASE: 50,
-            UPGRADE_FACTOR: 2,
-            HISTORY_INTERVAL_MS: 500,
-            AI_TICK_INTERVAL_MS: 1500,
+<script>
+/**
+ * LIGHT SPEED - Full LLM Prompt Implementation
+ * 
+ * Core Concept: True State vs Perceived State.
+ * All logic happens in True State.
+ * Rendering is based on Perceived State, delayed by distance / C.
+ */
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// =========================================
+// CONSTANTS & CONFIG
+// =========================================
+// Default config, overridden by title screen
+let CONSTANTS = {
+    GALAXY_WIDTH: 2000,
+    GALAXY_HEIGHT: 2000,
+    GALAXY_RADIUS: 950,
+    LIGHT_SPEED_C: 60,
+    UNIT_SPEED: 20,
+    ZOOM_START: 1.5,
+    MIN_ZOOM: 0.5,
+    MAX_ZOOM: 10.0,
+    LOD_ZOOM_THRESHOLD: 2.5,
+    UPGRADE_DURATION: 25.0,
+    MIN_SUN_SPACING: 80,
+    NUM_SUNS: 150,
+    HOMEWORLD_RIM_FACTOR: 0.9,
+    TICK_RATE: 60,
+    GAME_SPEED: 1.0
+};
+
+// Debug / Testing flags
+const FLAGS = {
+    DEBUG_SHOW_TRUE_STATE: false,
+    RANDOM_SEED: null,
+    SOUND_ENABLED: false
+};
+
+let COLORS = {
+    NEUTRAL: 0x666666,
+    PLAYER: 0x3b82f6, // Blue-500
+    AI_1: 0xef4444,   // Red-500
+    AI_2: 0x22c55e,   // Green-500
+    AI_3: 0xa855f7,   // Purple-500
+    SELECTION: 0xffffff,
+    BACKGROUND: 0x080808
+};
+
+let FACTIONS = {
+    NEUTRAL: 0,
+    PLAYER: 1,
+    AI_START: 2
+};
+
+const SUN_LEVELS = [
+    { rate: 0, cap: 50, cost: 0 },     // Level 0 (Unoccupied/Neutral small)
+    { rate: 0.4, cap: 100, cost: 80 },   // Level 1
+    { rate: 1.0, cap: 250, cost: 250 },  // Level 2
+    { rate: 2.4, cap: 600, cost: 600 }, // Level 3
+    { rate: 6.0, cap: 1500, cost: 0 }   // Level 4 (Max)
+];
+
+// =========================================
+// UTILITIES
+// =========================================
+let seed = FLAGS.RANDOM_SEED || Date.now();
+function random() {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+}
+
+function dist(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function lerpPos(p1, p2, t) {
+    return { x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) };
+}
+
+// =========================================
+// GAME STATE CLASSES (True State)
+// =========================================
+
+class Sun {
+    constructor(id, x, y, level, owner, units) {
+        this.id = id;
+        this.pos = { x, y };
+        this.level = level;
+        this.owner = owner;
+        this.units = units;
+        this.upgradeTimer = 0;
+        this.radius = 15 + level * 5;
+
+        // History for Time-Delayed Perception
+        this.history = []; 
+        this.addCheckpoint(0);
+    }
+
+    addCheckpoint(time) {
+        this.history.push({
+            time: time,
+            units: this.units,
+            owner: this.owner,
+            level: this.level,
+            rate: this.getProductionRate(),
+            upgrading: this.upgradeTimer > 0
+        });
+        if (this.history.length > 50) this.history.shift();
+    }
+
+    getProductionRate() {
+        if (this.owner === FACTIONS.NEUTRAL && this.level < 2) return 0;
+        return SUN_LEVELS[this.level].rate;
+    }
+
+    getMaxCapacity() {
+        return SUN_LEVELS[this.level].cap;
+    }
+
+    tick(dt, time) {
+        if (this.owner !== FACTIONS.NEUTRAL || this.level >= 2) {
+             const rate = this.getProductionRate();
+             const cap = this.getMaxCapacity();
+             if (this.units < cap) {
+                 this.units = Math.min(cap, this.units + rate * dt);
+             }
+        }
+
+        if (this.upgradeTimer > 0) {
+            this.upgradeTimer -= dt;
+            if (this.upgradeTimer <= 0) {
+                this.level = Math.min(this.level + 1, SUN_LEVELS.length - 1);
+                this.upgradeTimer = 0;
+                this.addCheckpoint(time);
+            }
+        }
+    }
+
+    getPerceivedState(observerPos, currentTime) {
+        if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
+             return { units: Math.floor(this.units), owner: this.owner, level: this.level, upgrading: this.upgradeTimer > 0 };
+        }
+
+        const delay = dist(this.pos, observerPos) / CONSTANTS.LIGHT_SPEED_C;
+        const perceivedTime = Math.max(0, currentTime - delay);
+
+        let cp = this.history[0];
+        for (let i = this.history.length - 1; i >= 0; i--) {
+            if (this.history[i].time <= perceivedTime) {
+                cp = this.history[i];
+                break;
+            }
+        }
+
+        let perceivedUnits = cp.units;
+        const rate = (cp.owner !== FACTIONS.NEUTRAL || cp.level >= 2) ? SUN_LEVELS[cp.level].rate : 0;
+        const cap = SUN_LEVELS[cp.level].cap;
+
+        if (perceivedUnits < cap) {
+             perceivedUnits = Math.min(cap, perceivedUnits + rate * (perceivedTime - cp.time));
+        }
+
+        return {
+            units: Math.floor(perceivedUnits),
+            owner: cp.owner,
+            level: cp.level,
+            upgrading: cp.upgrading
         };
-        // Calculate Speed of Light (C) and Unit Speed
-        CONFIG.C = CONFIG.GALAXY_SIZE / CONFIG.MAX_DELAY_SECONDS;
-        CONFIG.UNIT_SPEED = CONFIG.C * CONFIG.UNIT_SPEED_RATIO;
-        CONFIG.MAX_HISTORY_AGE_MS = CONFIG.MAX_DELAY_SECONDS * 1000 + 5000;
+    }
+}
 
-        // --- Global Variables ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const minimapCanvas = document.getElementById('minimap');
-        const minimapCtx = minimapCanvas.getContext('2d');
-        const statsCanvas = document.getElementById('statsCanvas');
-        const statsCtx = statsCanvas.getContext('2d');
+class Fleet {
+    constructor(id, owner, sourcePos, targetSunId, units, launchTime) {
+        this.id = id;
+        this.owner = owner;
+        this.sourcePos = { ...sourcePos };
+        this.targetSunId = targetSunId;
+        this.units = units;
+        this.launchTime = launchTime;
+        
+        this.targetPos = null; 
+        this.arrivalTime = 0;
+        this.processed = false;
+    }
 
-        let game;
-        let camera = { x: CONFIG.GALAXY_SIZE / 2, y: CONFIG.GALAXY_SIZE / 2, zoom: 0.1 };
-        let inputState = {
-            mouseDown: false,
-            dragStart: { x: 0, y: 0 },
-            isDragging: false,
-            dragFromSun: null,
-            selection: [],
-            lastMousePos: { x: 0, y: 0 },
-            lastTapTime: 0,
-            isHolding: false,
-            holdStart: 0,
-            keys: {},
-        };
+    getPerceivedPos(observerPos, currentTime, targetSunPos) {
+        if (!this.targetPos) this.targetPos = targetSunPos;
 
-        const PLAYER_ID = 1;
-        const AI_ID_1 = 2;
-        const NEUTRAL_ID = 0;
+        if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
+             if (currentTime < this.launchTime) return null;
+             if (currentTime >= this.arrivalTime) return this.targetPos;
+             const t = (currentTime - this.launchTime) / (this.arrivalTime - this.launchTime);
+             return lerpPos(this.sourcePos, this.targetPos, t);
+        }
 
-        const COLORS = {
-            [NEUTRAL_ID]: { core: '#777777', glow: '#AAAAAA', name: 'Neutral' },
-            [PLAYER_ID]: { core: '#00AAFF', glow: '#00FFFF', name: 'Player' },
-            [AI_ID_1]: { core: '#FF4444', glow: '#FF8888', name: 'Enemy' },
-            background: '#000008',
-            selection: 'rgba(0, 255, 255, 0.3)',
-        };
+        const dSource = dist(this.sourcePos, observerPos);
+        const dTarget = dist(this.targetPos, observerPos);
+        
+        const t_p_start = this.launchTime + dSource / CONSTANTS.LIGHT_SPEED_C;
+        const t_p_end = this.arrivalTime + dTarget / CONSTANTS.LIGHT_SPEED_C;
 
-        // --- Audio System (Minimal Ambient) ---
-        let audioContext;
-        function initAudio() {
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    playAmbientMusic();
-                } catch (e) {
-                    console.log("Web Audio API not supported");
+        if (currentTime < t_p_start) return null;
+        
+        const gracePeriod = 0.5; 
+        if (currentTime >= t_p_end + gracePeriod) return null;
+
+        const t = (currentTime - t_p_start) / (t_p_end - t_p_start);
+        return lerpPos(this.sourcePos, this.targetPos, Math.max(0, Math.min(1, t)));
+    }
+}
+
+class Command {
+    constructor(id, type, owner, homeworldPos, sourceSunId, targetSunId, issueTime) {
+        this.id = id;
+        this.type = type; // 'ATTACK', 'UPGRADE'
+        this.owner = owner;
+        this.startPos = { ...homeworldPos };
+        this.sourceSunId = sourceSunId;
+        this.targetSunId = targetSunId;
+        this.issueTime = issueTime;
+        this.targetPos = null; 
+        this.arrivalTime = 0;
+        this.executed = false;
+    }
+}
+
+// =========================================
+// ENGINE (TRUE STATE)
+// =========================================
+class GameEngine {
+    constructor() {
+        this.suns = new Map();
+        this.fleets = new Map();
+        this.commands = [];
+        this.time = 0;
+        this.nextId = 1;
+        this.homeworlds = {}; // FactionID -> {x,y}
+        this.aiFactions = []; // List of AI faction IDs
+    }
+
+    init(numAI) {
+        this.generateMap(numAI);
+    }
+
+    generateMap(numAI) {
+        const R = CONSTANTS.GALAXY_RADIUS;
+        let attempts = 0;
+        const maxAttempts = CONSTANTS.NUM_SUNS * 500;
+        while (this.suns.size < CONSTANTS.NUM_SUNS && attempts < maxAttempts) {
+            attempts++;
+            const r_cand = random() * R;
+            const threshold = (4 - 3 * r_cand / R) / 4;
+            if (random() > threshold) continue;
+
+            const theta = random() * Math.PI * 2;
+            const x = r_cand * Math.cos(theta);
+            const y = r_cand * Math.sin(theta);
+            const pos = { x, y };
+
+            let tooClose = false;
+            for (const sun of this.suns.values()) {
+                if (dist(pos, sun.pos) < CONSTANTS.MIN_SUN_SPACING) {
+                    tooClose = true;
+                    break;
                 }
             }
+            if (tooClose) continue;
+
+            let level = 1;
+            let units = 15;
+            const typeRoll = random();
+            if (typeRoll < 0.2) { level = 2; units = 60; }
+            else if (typeRoll < 0.5) { level = 1; units = 30; }
+
+            const sun = new Sun(this.nextId++, x, y, level, FACTIONS.NEUTRAL, units);
+            this.suns.set(sun.id, sun);
         }
 
-        function playSound(freq, type, duration, gainVal) {
-            if (!audioContext) return;
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.type = type;
-            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-            gainNode.gain.setValueAtTime(gainVal, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.start();
-            oscillator.stop(audioContext.currentTime + duration);
+        // 2. Place Homeworlds on Rim
+        const hwDist = R * CONSTANTS.HOMEWORLD_RIM_FACTOR;
+        const startAngle = random() * Math.PI * 2;
+        const totalFactions = numAI + 1; // Player + AI
+        const angleStep = (Math.PI * 2) / totalFactions;
+
+        this.setupHomeworld(FACTIONS.PLAYER, hwDist, startAngle);
+        
+        for (let i = 0; i < numAI; i++) {
+            const factionId = FACTIONS.AI_START + i;
+            this.aiFactions.push(factionId);
+            this.setupHomeworld(factionId, hwDist, startAngle + angleStep * (i + 1));
+        }
+    }
+
+    setupHomeworld(factionId, r, theta) {
+        const pos = { x: r * Math.cos(theta), y: r * Math.sin(theta) };
+        this.homeworlds[factionId] = pos;
+        
+        let nearest = null;
+        let minDist = Infinity;
+        for (const sun of this.suns.values()) {
+             if (sun.owner !== FACTIONS.NEUTRAL) continue;
+             const d = dist(pos, sun.pos);
+             if (d < minDist) { minDist = d; nearest = sun; }
         }
 
-        function playAmbientMusic() {
-            // A very simple, low, tranquil drone
-            if (!audioContext) return;
-            const osc1 = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(55, audioContext.currentTime); // A1
-            gain.gain.setValueAtTime(0.03, audioContext.currentTime);
-            osc1.connect(gain);
-            gain.connect(audioContext.destination);
-            osc1.start();
+        if (nearest) {
+            nearest.pos = pos;
+            nearest.owner = factionId;
+            nearest.level = 1;
+            nearest.units = 50;
+            nearest.addCheckpoint(0);
+        }
+    }
+
+    issueAttack(factionId, sourceIds, targetId, percentage = 0.5) {
+        const hw = this.homeworlds[factionId];
+        if (!hw) return;
+
+        sourceIds.forEach(sid => {
+            if (sid === targetId) return;
+            const cmd = new Command(this.nextId++, 'ATTACK', factionId, hw, sid, targetId, this.time);
+            const sourceSun = this.suns.get(sid);
+            cmd.targetPos = sourceSun.pos;
+            cmd.arrivalTime = this.time + dist(hw, sourceSun.pos) / CONSTANTS.LIGHT_SPEED_C;
+            cmd.percentage = percentage;
+            this.commands.push(cmd);
+        });
+    }
+
+    issueUpgrade(factionId, sunId) {
+        const hw = this.homeworlds[factionId];
+        const sun = this.suns.get(sunId);
+        if (!hw || !sun) return;
+
+        const cmd = new Command(this.nextId++, 'UPGRADE', factionId, hw, sunId, null, this.time);
+        cmd.targetPos = sun.pos;
+        cmd.arrivalTime = this.time + dist(hw, sun.pos) / CONSTANTS.LIGHT_SPEED_C;
+        this.commands.push(cmd);
+    }
+
+    update(dt) {
+        this.time += dt;
+
+        for (const sun of this.suns.values()) {
+            sun.tick(dt, this.time);
         }
 
-        // --- Utility Functions ---
-        function distance(x1, y1, x2, y2) {
-            return Math.hypot(x2 - x1, y2 - y1);
+        for (let i = this.commands.length - 1; i >= 0; i--) {
+            const cmd = this.commands[i];
+            if (!cmd.executed && this.time >= cmd.arrivalTime) {
+                this.executeCommand(cmd);
+                cmd.executed = true;
+            }
+        }
+        this.commands = this.commands.filter(c => !c.executed);
+
+        const arrivalsAtSun = new Map();
+        const maxDelay = (CONSTANTS.GALAXY_WIDTH * 1.5) / CONSTANTS.LIGHT_SPEED_C + 2;
+
+        for (const [fid, fleet] of this.fleets.entries()) {
+             if (!fleet.processed && this.time >= fleet.arrivalTime) {
+                 fleet.processed = true;
+                 if (!arrivalsAtSun.has(fleet.targetSunId)) {
+                     arrivalsAtSun.set(fleet.targetSunId, []);
+                 }
+                 arrivalsAtSun.get(fleet.targetSunId).push(fleet);
+             }
+
+             if (fleet.processed && this.time > fleet.arrivalTime + maxDelay) {
+                 this.fleets.delete(fid);
+             }
         }
 
-        function screenToWorld(screenX, screenY) {
-            const worldX = (screenX - canvas.width / 2) / camera.zoom + camera.x;
-            const worldY = (screenY - canvas.height / 2) / camera.zoom + camera.y;
-            return { x: worldX, y: worldY };
+        for (const [sunId, arrivingFleets] of arrivalsAtSun.entries()) {
+            this.resolveArrivals(this.suns.get(sunId), arrivingFleets);
+        }
+    }
+
+    executeCommand(cmd) {
+        const sun = this.suns.get(cmd.sourceSunId);
+        if (sun.owner !== cmd.owner) return;
+
+        if (cmd.type === 'ATTACK') {
+            const sendUnits = Math.floor(sun.units * cmd.percentage);
+            if (sendUnits < 1) return;
+
+            sun.units -= sendUnits;
+            sun.addCheckpoint(this.time);
+
+            const targetSun = this.suns.get(cmd.targetSunId);
+            const fleet = new Fleet(this.nextId++, cmd.owner, sun.pos, cmd.targetSunId, sendUnits, this.time);
+            fleet.targetPos = targetSun.pos;
+            fleet.arrivalTime = this.time + dist(sun.pos, targetSun.pos) / CONSTANTS.UNIT_SPEED;
+            
+            this.fleets.set(fleet.id, fleet);
+
+        } else if (cmd.type === 'UPGRADE') {
+            if (sun.level >= SUN_LEVELS.length - 1) return;
+            if (sun.upgradeTimer > 0) return;
+            
+            const cost = SUN_LEVELS[sun.level].cost;
+            if (sun.units >= cost) {
+                sun.units -= cost;
+                sun.upgradeTimer = CONSTANTS.UPGRADE_DURATION;
+                sun.addCheckpoint(this.time);
+            }
+        }
+    }
+
+    resolveArrivals(sun, fleets) {
+        const forces = {};
+        forces[sun.owner] = (forces[sun.owner] || 0) + sun.units;
+        fleets.forEach(f => {
+            forces[f.owner] = (forces[f.owner] || 0) + f.units;
+        });
+
+        let hostilePresent = false;
+        for (const owner in forces) {
+            if (parseInt(owner) !== sun.owner && forces[owner] > 0) {
+                hostilePresent = true;
+                break;
+            }
+        }
+        if (hostilePresent && sun.upgradeTimer > 0) {
+             sun.upgradeTimer = 0;
         }
 
-        function worldToScreen(worldX, worldY) {
-            const screenX = (worldX - camera.x) * camera.zoom + canvas.width / 2;
-            const screenY = (worldY - camera.y) * camera.zoom + canvas.height / 2;
-            return { x: screenX, y: screenY };
+        while (true) {
+            const active = Object.entries(forces)
+                .filter(([owner, units]) => units > 0)
+                .map(([owner, units]) => ({ owner: parseInt(owner), units }));
+
+            if (active.length <= 1) break;
+
+            active.sort((a, b) => b.units - a.units || a.owner - b.owner);
+
+            const f1 = active[0];
+            const f2 = active[1];
+            const damage = Math.min(f1.units, f2.units);
+
+            forces[f1.owner] -= damage;
+            forces[f2.owner] -= damage;
         }
 
-        function clamp(value, min, max) {
-            return Math.max(min, Math.min(max, value));
-        }
-
-        // --- Classes ---
-
-        class Player {
-            constructor(id, isAI) {
-                this.id = id;
-                this.color = COLORS[id];
-                this.isAI = isAI;
-                // The observer position determines the center point for command origin.
-                // Information delay is calculated relative to the camera position (see Renderer).
-                this.commandOrigin = { x: 0, y: 0 }; 
+        let winner = FACTIONS.NEUTRAL;
+        let survivors = 0;
+        for (const owner in forces) {
+            if (forces[owner] > 0) {
+                winner = parseInt(owner);
+                survivors = forces[owner];
+                break;
             }
         }
 
-        class Sun {
-            constructor(id, x, y, level = 1, ownerId = NEUTRAL_ID, initialUnits = 0) {
-                this.id = id;
-                this.x = x;
-                this.y = y;
+        if (winner !== sun.owner) {
+             sun.owner = winner;
+             sun.upgradeTimer = 0;
+        }
+        sun.units = survivors;
+        sun.addCheckpoint(this.time);
+    }
+}
 
-                // True State (The actual state of the sun in the simulation)
-                this.level = level;
-                this.ownerId = ownerId;
-                this.units = initialUnits;
-                this.rallyTargetId = null;
-                // Capture progress: 1 = Fully owned by current owner. 0 = Neutralized.
-                this.captureProgress = (ownerId === NEUTRAL_ID) ? 0 : 1; 
-                this.capturingPlayerId = null;
+// =========================================
+// RENDERER (PIXIJS)
+// =========================================
+class GameRenderer {
+    constructor(engine, containerId) {
+        this.engine = engine;
+        this.app = new PIXI.Application({ 
+            resizeTo: window, 
+            antialias: true, 
+            backgroundColor: COLORS.BACKGROUND 
+        });
+        document.body.appendChild(this.app.view);
 
-                this.calculateStats();
+        const partGfx = new PIXI.Graphics();
+        partGfx.beginFill(0xffffff, 0.8);
+        partGfx.drawCircle(0, 0, 3);
+        partGfx.endFill();
+        this.particleTex = this.app.renderer.generateTexture(partGfx);
 
-                // History Management for Light Speed Delay
-                this.history = [];
-                this.lastHistoryTime = 0;
-            }
+        this.world = new PIXI.Container();
+        this.app.stage.addChild(this.world);
 
-            calculateStats() {
-                this.radius = 15 + this.level * 5;
-                this.capacity = CONFIG.BASE_CAPACITY * Math.pow(1.8, this.level - 1);
-                this.productionRate = CONFIG.PRODUCTION_RATE * Math.pow(1.5, this.level - 1);
-                this.captureCost = CONFIG.BASE_CAPTURE_COST * Math.pow(1.8, this.level - 1);
-            }
+        this.selectionBoxGfx = new PIXI.Graphics();
+        this.app.stage.addChild(this.selectionBoxGfx);
 
-            update(dt, game) {
-                const currentTime = game.currentTime;
+        this.sunGraphics = new Map();
+        this.fleetGraphics = new Map();
+        this.cmdGraphics = new Map();
+        this.selectionRings = new PIXI.Graphics();
+        this.world.addChild(this.selectionRings);
 
-                // 1. Production
-                if (this.ownerId !== NEUTRAL_ID && this.ownerId !== null) {
-                    if (this.units < this.capacity) {
-                        this.units += this.productionRate * dt;
-                    }
-                    if (this.units > this.capacity) {
-                        this.units = this.capacity;
-                    }
+        this.camera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
+        this.targetCamera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
 
-                    // Handle Rally Lines
-                    if (this.rallyTargetId !== null && this.units > 1) {
-                        const targetSun = game.suns.get(this.rallyTargetId);
-                        if (targetSun && targetSun.ownerId === this.ownerId) {
-                            // Send units slightly faster than production
-                            const amountToSend = Math.min(this.units - 1, this.productionRate * dt * 1.2); 
-                            if (amountToSend > 0) {
-                                this.units -= amountToSend;
-                                game.launchFleet(this, targetSun, amountToSend, this.ownerId, currentTime);
-                            }
-                        } else {
-                            this.rallyTargetId = null; // Cancel rally if target is lost
-                        }
-                    }
-                }
+        this.initWorld();
 
-                // 2. History Logging
-                if (currentTime - this.lastHistoryTime > CONFIG.HISTORY_INTERVAL_MS) {
-                    this.logHistory(currentTime);
-                    this.lastHistoryTime = currentTime;
-                }
-            }
+        this.minimapCanvas = document.getElementById('minimap');
+        this.minimapCtx = this.minimapCanvas.getContext('2d');
+    }
 
-            // Creates a snapshot of the sun's state at a given time.
-            logHistory(currentTime) {
-                this.history.unshift({
-                    time: currentTime,
-                    units: this.units,
-                    ownerId: this.ownerId,
-                    level: this.level,
-                    captureProgress: this.captureProgress,
-                    capturingPlayerId: this.capturingPlayerId,
-                    radius: this.radius
-                });
+    initWorld() {
+        this.engine.suns.forEach(sun => {
+            const g = new PIXI.Container();
+            
+            const core = new PIXI.Graphics();
+            g.addChild(core);
 
-                // Prune old history that is older than the maximum possible delay
-                while (this.history.length > 0 && currentTime - this.history[this.history.length - 1].time > CONFIG.MAX_HISTORY_AGE_MS) {
-                    this.history.pop();
-                }
-            }
+            const rings = new PIXI.Graphics();
+            g.addChild(rings);
 
-            // Determines what an observer sees based on light speed delay.
-            getPerceivedState(observerPos, currentTime) {
-                const dist = distance(this.x, this.y, observerPos.x, observerPos.y);
-                // Delay = Distance / Speed of Light (C is in pixels/sec, we need ms)
-                const delay = (dist / CONFIG.C) * 1000; 
-                const perceivedTime = currentTime - delay;
+            const swarm = new PIXI.Container();
+            g.addChild(swarm);
 
-                // Find the newest history snapshot older than the perceived time
-                for (const snapshot of this.history) {
-                    if (snapshot.time <= perceivedTime) {
-                        return snapshot;
-                    }
-                }
-                // If perceived time is before the oldest record, return the oldest record.
-                return this.history.length > 0 ? this.history[this.history.length - 1] : this.getCurrentState(currentTime);
-            }
+            const style = new PIXI.TextStyle({
+                fontFamily: 'Arial', fontSize: 14, fill: '#ffffff',
+                stroke: '#000000', strokeThickness: 4, align: 'center'
+            });
+            const label = new PIXI.Text('0', style);
+            label.anchor.set(0.5, 1);
+            label.position.set(0, -20);
+            g.addChild(label);
 
-            getCurrentState(currentTime) {
-                 return {
-                    time: currentTime,
-                    units: this.units,
-                    ownerId: this.ownerId,
-                    level: this.level,
-                    captureProgress: this.captureProgress,
-                    capturingPlayerId: this.capturingPlayerId,
-                    radius: this.radius
-                };
-            }
+            g.position.set(sun.pos.x, sun.pos.y);
+            g.interactive = true;
+            g.sunId = sun.id;
 
-            // Called when a fleet arrives (True state simulation)
-            resolveCombat(fleet, currentTime, game) {
-                if (this.ownerId === fleet.ownerId) {
-                    // Reinforcements
-                    this.units += fleet.units;
+            this.world.addChild(g);
+            this.sunGraphics.set(sun.id, { container: g, core, rings, swarm, label, lastOwner: -1, lastLevel: -1, particles: [] });
+        });
+    }
+
+    updateCamera(dt) {
+        this.camera.zoom = lerp(this.camera.zoom, this.targetCamera.zoom, dt * 5);
+        this.camera.x = lerp(this.camera.x, this.targetCamera.x, dt * 10);
+        this.camera.y = lerp(this.camera.y, this.targetCamera.y, dt * 10);
+
+        this.world.scale.set(this.camera.zoom);
+        this.world.position.set(
+            this.app.screen.width / 2 - this.camera.x * this.camera.zoom,
+            this.app.screen.height / 2 - this.camera.y * this.camera.zoom
+        );
+    }
+
+    render(dt, playerSelection) {
+        const observerPos = this.engine.homeworlds[FACTIONS.PLAYER];
+        const currentTime = this.engine.time;
+        const zoom = this.camera.zoom;
+
+        this.engine.suns.forEach(sun => {
+            const gfx = this.sunGraphics.get(sun.id);
+            const pState = sun.getPerceivedState(observerPos, currentTime);
+            const color = this.getFactionColor(pState.owner);
+
+            if (pState.owner !== gfx.lastOwner || pState.level !== gfx.lastLevel) {
+                gfx.core.clear();
+                gfx.core.beginFill(color);
+                if (pState.owner === FACTIONS.NEUTRAL) {
+                    gfx.core.drawCircle(0, 0, 8 + pState.level * 2);
                 } else {
-                    // Combat (1:1 attrition)
-                    if (this.units >= fleet.units) {
-                        this.units -= fleet.units;
-                        fleet.units = 0;
-                    } else {
-                        fleet.units -= this.units;
-                        this.units = 0;
-
-                        // Start Capture
-                        this.handleCapture(fleet, currentTime, game);
-                    }
+                    gfx.core.drawCircle(0, 0, 12 + pState.level * 3);
+                    gfx.core.lineStyle(2, color, 0.5);
+                    gfx.core.drawCircle(0, 0, 16 + pState.level * 4);
                 }
+                gfx.core.endFill();
+                gfx.lastOwner = pState.owner;
+                gfx.lastLevel = pState.level;
             }
 
-            handleCapture(fleet, currentTime, game) {
-                const capturePower = fleet.units / this.captureCost;
+            if (pState.upgrading) {
+                 gfx.rings.clear();
+                 gfx.rings.lineStyle(3, 0xffff00, 0.7 + Math.sin(currentTime * 10) * 0.3);
+                 gfx.rings.drawCircle(0, 0, 25 + pState.level * 5);
+            } else {
+                 gfx.rings.clear();
+            }
 
-                if (this.ownerId !== NEUTRAL_ID && this.ownerId !== null) {
-                    // Draining enemy ownership (Progress goes from 1 down to 0)
-                    const previousOwnerId = this.ownerId;
-                    this.captureProgress -= capturePower;
+            const swarmCount = Math.min(Math.floor(pState.units / 2), 50);
+            while (gfx.particles.length < swarmCount) {
+                const p = new PIXI.Sprite(this.particleTex);
+                p.anchor.set(0.5);
+                p.scale.set(0.3 + Math.random() * 0.4);
+                p.orbitRadius = 20 + Math.random() * 20 + pState.level * 3;
+                p.orbitSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5);
+                p.orbitOffset = Math.random() * Math.PI * 2;
+                p.anglePos = Math.random() * Math.PI * 2;
+                p.blendMode = PIXI.BLEND_MODES.ADD;
+                gfx.swarm.addChild(p);
+                gfx.particles.push(p);
+            }
+            while (gfx.particles.length > swarmCount) {
+                const p = gfx.particles.pop();
+                gfx.swarm.removeChild(p);
+                p.destroy();
+            }
+            gfx.particles.forEach(p => {
+                p.tint = color;
+                p.anglePos += p.orbitSpeed * dt;
+                p.x = Math.cos(p.anglePos) * p.orbitRadius;
+                p.y = Math.sin(p.anglePos) * p.orbitRadius * 0.6;
+                p.alpha = 0.5 + Math.sin(p.anglePos + currentTime) * 0.3;
+            });
+
+            gfx.label.text = Math.floor(pState.units).toString();
+            gfx.label.scale.set(Math.max(1 / zoom, 0.5));
+            gfx.label.visible = zoom > 0.3;
+        });
+
+        this.selectionRings.clear();
+        this.selectionRings.lineStyle(3 / zoom, COLORS.SELECTION, 0.8);
+        playerSelection.forEach(sunId => {
+            const sun = this.engine.suns.get(sunId);
+            this.selectionRings.drawCircle(sun.pos.x, sun.pos.y, 35 + sun.level*5);
+        });
+
+        const activeFleetIds = new Set();
+        this.engine.fleets.forEach(fleet => {
+            const targetSun = this.engine.suns.get(fleet.targetSunId);
+            const pPos = fleet.getPerceivedPos(observerPos, currentTime, targetSun.pos);
+            
+            if (pPos) {
+                activeFleetIds.add(fleet.id);
+                let gfx = this.fleetGraphics.get(fleet.id);
+                if (!gfx) {
+                    gfx = this.createFleetGfx(fleet.owner);
+                    this.world.addChild(gfx.container);
+                    this.fleetGraphics.set(fleet.id, gfx);
+                }
+
+                gfx.container.position.set(pPos.x, pPos.y);
+                gfx.label.text = fleet.units.toString();
+                gfx.label.scale.set(Math.max(1 / zoom, 0.5));
+
+                const visualCount = Math.min(Math.floor(fleet.units), 80);
+                while (gfx.particles.length < visualCount) {
+                    let p = gfx.pool.pop();
+                    if (!p) {
+                        p = new PIXI.Sprite(this.particleTex);
+                        p.anchor.set(0.5);
+                        p.blendMode = PIXI.BLEND_MODES.ADD;
+                    }
+                    p.scale.set(0.2 + Math.random() * 0.3);
+                    p.alpha = Math.random();
+                    p.x = (Math.random() - 0.5) * 10;
+                    p.y = (Math.random() - 0.5) * 10;
+                    p.vx = (Math.random() - 0.5) * 10;
+                    p.vy = (Math.random() - 0.5) * 10;
+                    gfx.swarm.addChild(p);
+                    gfx.particles.push(p);
+                }
+                while (gfx.particles.length > visualCount) {
+                    const p = gfx.particles.pop();
+                    gfx.swarm.removeChild(p);
+                    gfx.pool.push(p);
+                }
+
+                const dx = fleet.targetPos ? fleet.targetPos.x - fleet.sourcePos.x : 0;
+                const dy = fleet.targetPos ? fleet.targetPos.y - fleet.sourcePos.y : 0;
+                const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                const ndx = dx / len;
+                const ndy = dy / len;
+
+                const color = gfx.color;
+                gfx.particles.forEach(p => {
+                    p.tint = color;
+                    p.x -= ndx * 15 * dt;
+                    p.y -= ndy * 15 * dt;
                     
-                    if (this.captureProgress <= 0) {
-                        // Neutralized
-                        game.logEvent(currentTime, 'X', previousOwnerId, this.x, this.y);
-                        this.ownerId = NEUTRAL_ID;
-                        // Continue capturing from 0 with remaining power
-                        const remainingPower = Math.abs(this.captureProgress);
-                        this.captureProgress = remainingPower;
-                        this.capturingPlayerId = fleet.ownerId;
-                    }
-                } else {
-                    // Capturing neutral (Progress goes from 0 up to 1)
-                    // Check if contested
-                    if (this.capturingPlayerId && this.capturingPlayerId !== fleet.ownerId) {
-                        this.captureProgress -= capturePower;
-                        if (this.captureProgress < 0) {
-                            this.capturingPlayerId = fleet.ownerId;
-                            this.captureProgress = Math.abs(this.captureProgress);
-                        }
-                    } else {
-                        this.capturingPlayerId = fleet.ownerId;
-                        this.captureProgress += capturePower;
-                    }
-                }
-
-                if (this.captureProgress >= 1 && this.ownerId === NEUTRAL_ID) {
-                    // Captured!
-                    this.captureProgress = 1;
-                    this.ownerId = fleet.ownerId;
-                    this.capturingPlayerId = null;
-                    this.units = 0; 
-                    this.rallyTargetId = null;
-                    game.logEvent(currentTime, '+', this.ownerId, this.x, this.y);
-                    if (this.ownerId === PLAYER_ID) {
-                        playSound(400, 'square', 0.2, 0.1);
-                    }
-                }
-            }
-
-            upgrade(game, currentTime) {
-                const cost = Math.floor(CONFIG.UPGRADE_COST_BASE * Math.pow(CONFIG.UPGRADE_FACTOR, this.level - 1));
-                if (this.units >= cost && this.level < 5) {
-                    this.units -= cost;
-                    this.level++;
-                    this.calculateStats();
-                    game.logEvent(currentTime, '↑', this.ownerId, this.x, this.y);
-                    if (this.ownerId === PLAYER_ID) {
-                        playSound(800, 'triangle', 0.3, 0.1);
-                    }
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        class Fleet {
-            constructor(id, ownerId, units, source, target, currentTime) {
-                this.id = id;
-                this.ownerId = ownerId;
-                this.units = units;
-                this.targetId = target.id;
-                this.startX = source.x;
-                this.startY = source.y;
-                this.targetX = target.x;
-                this.targetY = target.y;
-
-                this.distance = distance(this.startX, this.startY, this.targetX, this.targetY);
-                // Travel time in ms
-                this.travelTime = (this.distance / CONFIG.UNIT_SPEED) * 1000; 
-
-                this.departureTime = currentTime;
-                this.arrivalTime = currentTime + this.travelTime;
-            }
-
-            // Calculates the true position of the fleet at a specific time.
-            getPosition(time) {
-                const progress = (time - this.departureTime) / this.travelTime;
-                if (progress < 0) return { x: this.startX, y: this.startY };
-                if (progress > 1) return { x: this.targetX, y: this.targetY };
-
-                const x = this.startX + (this.targetX - this.startX) * progress;
-                const y = this.startY + (this.targetY - this.startY) * progress;
-                return { x, y };
-            }
-
-            // Determines the perceived position based on light speed delay.
-            getPerceivedState(observerPos, currentTime) {
-                // 1. Check if the launch event has reached the observer yet.
-                const launchDist = distance(this.startX, this.startY, observerPos.x, observerPos.y);
-                const launchDelay = (launchDist / CONFIG.C) * 1000;
-                const visibleLaunchTime = this.departureTime + launchDelay;
-
-                if (currentTime < visibleLaunchTime) {
-                    return null; // Fleet hasn't visibly launched yet
-                }
-
-                // 2. Calculate perceived position. 
-                // Approximation: Calculate delay from the current true position and look back in time.
-                // This is not perfectly accurate relativistic rendering, but sufficient for the game.
-                const truePos = this.getPosition(currentTime);
-                const currentDist = distance(truePos.x, truePos.y, observerPos.x, observerPos.y);
-                const currentDelay = (currentDist / CONFIG.C) * 1000;
-                const perceivedTime = currentTime - currentDelay;
-
-                // If the perceived time is before the departure, we should see it at the start.
-                if (perceivedTime < this.departureTime) {
-                     return { pos: {x: this.startX, y: this.startY}, units: this.units };
-                }
-
-                return { pos: this.getPosition(perceivedTime), units: this.units };
-            }
-        }
-
-        class Command {
-            // Commands travel from the player's command origin to the source suns that execute the order.
-            constructor(id, type, ownerId, sourceIds, targetId, percentage, dispatchTime, startPos) {
-                this.id = id;
-                this.type = type; // 'ATTACK', 'UPGRADE', 'RALLY'
-                this.ownerId = ownerId;
-                this.sourceIds = sourceIds;
-                this.targetId = targetId;
-                this.percentage = percentage;
-                this.dispatchTime = dispatchTime;
-
-                // We simulate a packet going to EACH source sun involved.
-                this.packets = [];
-                if (type === 'UPGRADE') {
-                    const targetSun = game.suns.get(targetId);
-                    if (targetSun) this.packets.push(this.createPacket(targetSun, startPos));
-                } else {
-                    sourceIds.forEach(sourceId => {
-                        const sourceSun = game.suns.get(sourceId);
-                        if (sourceSun) {
-                            this.packets.push(this.createPacket(sourceSun, startPos));
-                        }
-                    });
-                }
-            }
-
-            createPacket(destinationSun, startPos) {
-                const dist = distance(startPos.x, startPos.y, destinationSun.x, destinationSun.y);
-                const arrivalTime = this.dispatchTime + (dist / CONFIG.C) * 1000;
-                return {
-                    destSunId: destinationSun.id,
-                    startX: startPos.x,
-                    startY: startPos.y,
-                    endX: destinationSun.x,
-                    endY: destinationSun.y,
-                    arrivalTime: arrivalTime,
-                    arrived: false
-                };
-            }
-
-            update(game, currentTime) {
-                let allArrived = true;
-                this.packets.forEach(packet => {
-                    if (!packet.arrived) {
-                        if (currentTime >= packet.arrivalTime) {
-                            packet.arrived = true;
-                            this.execute(game, packet.destSunId, currentTime);
-                        } else {
-                            allArrived = false;
-                        }
-                    }
-                });
-                return allArrived;
-            }
-
-            getPacketPosition(packet, currentTime) {
-                const travelTime = packet.arrivalTime - this.dispatchTime;
-                if (travelTime <= 0) return { x: packet.endX, y: packet.endY };
-                const progress = (currentTime - this.dispatchTime) / travelTime;
-                if (progress < 0) return { x: packet.startX, y: packet.startY };
-                if (progress > 1) return { x: packet.endX, y: packet.endY };
-
-                const x = packet.startX + (packet.endX - packet.startX) * progress;
-                const y = packet.startY + (packet.endY - packet.startY) * progress;
-                return { x, y };
-            }
-
-            execute(game, sourceId, currentTime) {
-                const sourceSun = game.suns.get(sourceId);
-                if (!sourceSun || sourceSun.ownerId !== this.ownerId) return;
-
-                if (this.type === 'ATTACK') {
-                    const targetSun = game.suns.get(this.targetId);
-                    if (!targetSun) return;
-
-                    const unitsToSend = Math.floor(sourceSun.units * this.percentage);
-                    if (unitsToSend > 0) {
-                        sourceSun.units -= unitsToSend;
-                        game.launchFleet(sourceSun, targetSun, unitsToSend, this.ownerId, currentTime);
-                    }
-                } else if (this.type === 'RALLY') {
-                    const targetSun = game.suns.get(this.targetId);
-                    // Set rally if target is friendly, otherwise cancel rally.
-                    if (targetSun && targetSun.ownerId === this.ownerId && targetSun.id !== sourceSun.id) {
-                        sourceSun.rallyTargetId = this.targetId;
-                    } else {
-                        sourceSun.rallyTargetId = null;
-                    }
-                } else if (this.type === 'UPGRADE') {
-                    sourceSun.upgrade(game, currentTime);
-                }
-            }
-        }
-
-        class Game {
-            constructor() {
-                this.suns = new Map();
-                this.fleets = [];
-                this.commands = [];
-                this.players = [];
-                this.gameState = 'RUNNING';
-                this.currentTime = 0; // Milliseconds
-                this.lastTime = 0;
-                this.lastAITick = 0;
-                this.nextId = 1;
-                this.stars = [];
-                this.eventLog = [];
-                this.statsHistory = [];
-                this.init();
-            }
-
-            init() {
-                this.generateStars();
-                this.players.push(new Player(PLAYER_ID, false));
-                this.players.push(new Player(AI_ID_1, true));
-                this.generateGalaxy();
-                this.currentTime = performance.now();
-                this.lastTime = this.currentTime;
-                // Log initial history
-                this.suns.forEach(sun => sun.logHistory(this.currentTime));
-                this.logStats(this.currentTime);
-            }
-
-            generateStars() {
-                for (let i = 0; i < 3000; i++) {
-                    this.stars.push({
-                        x: Math.random() * CONFIG.GALAXY_SIZE,
-                        y: Math.random() * CONFIG.GALAXY_SIZE,
-                        size: Math.random() * 1.5 + 0.5,
-                        brightness: Math.random() * 0.5 + 0.5
-                    });
-                }
-            }
-
-            generateGalaxy() {
-                const margin = 1000;
-                // Player start (bottom left quadrant)
-                const playerStart = {
-                    x: Math.random() * (CONFIG.GALAXY_SIZE/4) + margin,
-                    y: CONFIG.GALAXY_SIZE - (Math.random() * (CONFIG.GALAXY_SIZE/4) + margin)
-                };
-                this.addSun(playerStart.x, playerStart.y, 2, PLAYER_ID, 50);
-                this.players.find(p => p.id === PLAYER_ID).commandOrigin = playerStart;
-                camera.x = playerStart.x;
-                camera.y = playerStart.y;
-
-                // AI start (top right quadrant)
-                const aiStart = {
-                    x: CONFIG.GALAXY_SIZE - (Math.random() * (CONFIG.GALAXY_SIZE/4) + margin),
-                    y: Math.random() * (CONFIG.GALAXY_SIZE/4) + margin
-                };
-                this.addSun(aiStart.x, aiStart.y, 2, AI_ID_1, 50);
-                this.players.find(p => p.id === AI_ID_1).commandOrigin = aiStart;
-
-
-                // Neutral Suns
-                let attempts = 0;
-                const minDistance = 400;
-                while (this.suns.size < CONFIG.SUN_COUNT && attempts < 10000) {
-                    attempts++;
-                    const x = Math.random() * CONFIG.GALAXY_SIZE;
-                    const y = Math.random() * CONFIG.GALAXY_SIZE;
-                    let tooClose = false;
-                    this.suns.forEach(sun => {
-                        if (distance(x, y, sun.x, sun.y) < minDistance) {
-                            tooClose = true;
-                        }
-                    });
-
-                    if (!tooClose) {
-                        const roll = Math.random();
-                        let level = 1;
-                        // Map Design: Varying sizes (represented by level here for simplicity)
-                        if (roll > 0.9) level = 3; // Large
-                        else if (roll > 0.7) level = 2; // Medium
-                        
-                        // Stronger initial garrisons for larger suns
-                        const garrison = level * 30 + Math.floor(Math.random() * 20);
-                        this.addSun(x, y, level, NEUTRAL_ID, garrison);
-                    }
-                }
-            }
-
-            addSun(x, y, level, ownerId, units) {
-                const id = this.nextId++;
-                const sun = new Sun(id, x, y, level, ownerId, units);
-                this.suns.set(id, sun);
-            }
-
-            logEvent(time, type, playerId, x, y) {
-                this.eventLog.push({ time, type, playerId, x, y });
-            }
-
-            logStats(time) {
-                const stats = {};
-                this.players.forEach(p => {
-                    stats[p.id] = { units: 0, suns: 0 };
-                });
-
-                this.suns.forEach(sun => {
-                    if (stats[sun.ownerId]) {
-                        stats[sun.ownerId].suns += 1;
-                        stats[sun.ownerId].units += sun.units;
-                    }
-                });
-
-                this.fleets.forEach(fleet => {
-                    if (stats[fleet.ownerId]) {
-                        stats[fleet.ownerId].units += fleet.units;
-                    }
-                });
-
-                this.statsHistory.push({ time, stats });
-            }
-
-            update() {
-                const now = performance.now();
-                // Clamp dt to prevent massive jumps if the tab was inactive
-                const dt = Math.min((now - this.lastTime) / 1000, 0.1); 
-                this.currentTime = now;
-                this.lastTime = now;
-
-                if (this.gameState !== 'RUNNING') return;
-
-                this.handleInput(dt);
-
-                // 1. Update Suns (Production, History)
-                this.suns.forEach(sun => sun.update(dt, this));
-
-                // 2. Process Commands
-                this.commands = this.commands.filter(cmd => !cmd.update(this, this.currentTime));
-
-                // 3. Update Fleets (Movement and Arrival)
-                this.fleets = this.fleets.filter(fleet => {
-                    if (this.currentTime >= fleet.arrivalTime) {
-                        const targetSun = this.suns.get(fleet.targetId);
-                        if (targetSun) {
-                            targetSun.resolveCombat(fleet, this.currentTime, this);
-                        }
-                        return false;
-                    }
-                    return true;
-                });
-
-                // 4. AI Update
-                if (this.currentTime - this.lastAITick > CONFIG.AI_TICK_INTERVAL_MS) {
-                    this.updateAI();
-                    this.lastAITick = this.currentTime;
-                    this.logStats(this.currentTime); // Log stats periodically
-                }
-
-                // 5. Check Game End Conditions
-                this.checkGameOver();
-            }
-
-            handleInput(dt) {
-                // Keyboard panning
-                const panSpeed = (CONFIG.EDGE_SCROLL_SPEED * 1.5) / camera.zoom * dt;
-                if (inputState.keys['w'] || inputState.keys['arrowup']) camera.y -= panSpeed;
-                if (inputState.keys['s'] || inputState.keys['arrowdown']) camera.y += panSpeed;
-                if (inputState.keys['a'] || inputState.keys['arrowleft']) camera.x -= panSpeed;
-                if (inputState.keys['d'] || inputState.keys['arrowright']) camera.x += panSpeed;
-
-                // Edge scrolling
-                const mouseX = inputState.lastMousePos.x;
-                const mouseY = inputState.lastMousePos.y;
-                const edgeSpeed = CONFIG.EDGE_SCROLL_SPEED / camera.zoom * dt;
-
-                if (mouseX < CONFIG.EDGE_SCROLL_MARGIN) camera.x -= edgeSpeed;
-                else if (mouseX > canvas.width - CONFIG.EDGE_SCROLL_MARGIN) camera.x += edgeSpeed;
-
-                if (mouseY < CONFIG.EDGE_SCROLL_MARGIN) camera.y -= edgeSpeed;
-                else if (mouseY > canvas.height - CONFIG.EDGE_SCROLL_MARGIN) camera.y += edgeSpeed;
-
-                clampCamera();
-            }
-
-            checkGameOver() {
-                const activePlayers = new Set();
-                // Check suns and fleets
-                this.suns.forEach(sun => {
-                    if (sun.ownerId !== NEUTRAL_ID) activePlayers.add(sun.ownerId);
-                });
-                this.fleets.forEach(fleet => activePlayers.add(fleet.ownerId));
-
-                if (activePlayers.size <= 1) {
-                    this.gameState = 'ENDED';
-                    const winnerId = activePlayers.values().next().value;
-                    const winner = this.players.find(p => p.id === winnerId);
-                    this.showGameOver(winner);
-                }
-            }
-
-            showGameOver(winner) {
-                const messageDiv = document.getElementById('gameOverMessage');
-                if (winner && winner.id === PLAYER_ID) {
-                    messageDiv.textContent = "Victory! The Galaxy is Conquered.";
-                    messageDiv.style.color = COLORS[PLAYER_ID].glow;
-                } else if (winner) {
-                    messageDiv.textContent = "Defeat! Your light has faded.";
-                    messageDiv.style.color = COLORS[winner.id].glow;
-                } else {
-                    messageDiv.textContent = "Mutual Annihilation.";
-                }
-                document.getElementById('gameOverScreen').style.display = 'flex';
-                this.renderStatsGraph();
-            }
-
-            // AI Logic
-            updateAI() {
-                this.players.filter(p => p.isAI).forEach(player => {
-                    const mySuns = Array.from(this.suns.values()).filter(s => s.ownerId === player.id);
+                    p.x += (Math.random() - 0.5) * 2;
+                    p.y += (Math.random() - 0.5) * 2;
                     
-                    // AI Strategy relies on the information it perceives, adhering to light speed rules.
-                    const perceivedTargets = Array.from(this.suns.values()).map(s => {
-                        return {
-                            trueSun: s,
-                            // AI perceives the galaxy from its command origin.
-                            state: s.getPerceivedState(player.commandOrigin, this.currentTime)
-                        }
-                    }).filter(p => p.state.ownerId !== player.id);
-
-                    if (mySuns.length === 0 || perceivedTargets.length === 0) return;
-
-                    mySuns.forEach(sourceSun => {
-                        // 1. Upgrade Logic
-                        const cost = Math.floor(CONFIG.UPGRADE_COST_BASE * Math.pow(CONFIG.UPGRADE_FACTOR, sourceSun.level - 1));
-                        if (sourceSun.units > cost * 1.8 && sourceSun.level < 5) {
-                            this.issueCommand('UPGRADE', player.id, [sourceSun.id], sourceSun.id, 0, this.currentTime, player.commandOrigin);
-                            return;
-                        }
-
-                        // 2. Attack/Expand Logic
-                        if (sourceSun.units > sourceSun.capacity * 0.7) {
-                            let bestTarget = null;
-                            let bestScore = -Infinity;
-
-                            perceivedTargets.forEach(target => {
-                                const dist = distance(sourceSun.x, sourceSun.y, target.trueSun.x, target.trueSun.y);
-                                // Estimate required force based on perceived state
-                                let requiredForce = target.state.units + target.trueSun.captureCost;
-                                if (target.state.ownerId !== NEUTRAL_ID) {
-                                    requiredForce += target.trueSun.captureCost; // Need extra to drain first
-                                }
-
-                                // Simple scoring: prioritize proximity and weakness
-                                let score = 100000 / (dist + requiredForce * 15);
-                                
-                                // Prefer neutrals for expansion
-                                if (target.state.ownerId === NEUTRAL_ID) score *= 2;
-
-                                if (score > bestScore && sourceSun.units * 0.8 > requiredForce) {
-                                    bestScore = score;
-                                    bestTarget = target.trueSun;
-                                }
-                            });
-
-                            if (bestTarget) {
-                                this.issueCommand('ATTACK', player.id, [sourceSun.id], bestTarget.id, 0.8, this.currentTime, player.commandOrigin);
-                            }
-                        }
-                    });
+                    if (dist({x:0, y:0}, {x:p.x, y:p.y}) > 15) {
+                        p.x = (Math.random() - 0.5) * 10;
+                        p.y = (Math.random() - 0.5) * 10;
+                        p.alpha = 1;
+                    }
+                    p.alpha *= 0.95;
                 });
             }
+        });
+        for (const [id, gfx] of this.fleetGraphics.entries()) {
+            if (!activeFleetIds.has(id)) {
+                this.world.removeChild(gfx.container);
+                this.fleetGraphics.delete(id);
+            }
+        }
 
-            launchFleet(source, target, units, ownerId, currentTime) {
-                const id = this.nextId++;
-                const fleet = new Fleet(id, ownerId, units, source, target, currentTime);
-                this.fleets.push(fleet);
+        const activeCmdIds = new Set();
+        this.engine.commands.forEach(cmd => {
+            if (cmd.owner !== FACTIONS.PLAYER) return;
+
+            const travelDuration = dist(cmd.startPos, cmd.targetPos) / CONSTANTS.LIGHT_SPEED_C;
+            const elapsed = currentTime - cmd.issueTime;
+            if (elapsed >= 0 && elapsed < travelDuration) {
+                const t = elapsed / travelDuration;
+                const pPos = lerpPos(cmd.startPos, cmd.targetPos, t);
+
+                activeCmdIds.add(cmd.id);
+                let gfx = this.cmdGraphics.get(cmd.id);
+                if (!gfx) {
+                    gfx = new PIXI.Graphics();
+                    gfx.beginFill(COLORS.SELECTION);
+                    gfx.drawCircle(0,0,3);
+                    gfx.endFill();
+                    this.world.addChild(gfx);
+                    this.cmdGraphics.set(cmd.id, gfx);
+                }
+                gfx.position.set(pPos.x, pPos.y);
+            }
+        });
+        for (const [id, gfx] of this.cmdGraphics.entries()) {
+            if (!activeCmdIds.has(id)) {
+                this.world.removeChild(gfx);
+                this.cmdGraphics.delete(id);
+            }
+        }
+    }
+
+    createFleetGfx(owner) {
+        const container = new PIXI.Container();
+        const color = this.getFactionColor(owner);
+        
+        const swarm = new PIXI.Container();
+        container.addChild(swarm);
+
+        const style = new PIXI.TextStyle({
+            fontFamily: 'Arial', fontSize: 12, fill: color,
+            stroke: '#000000', strokeThickness: 3, align: 'center'
+        });
+        const label = new PIXI.Text('0', style);
+        label.anchor.set(0.5, 1);
+        label.position.set(0, -10);
+        container.addChild(label);
+
+        return { container, swarm, label, color, particles: [], pool: [] };
+    }
+
+    getFactionColor(factionId) {
+        if (factionId === FACTIONS.PLAYER) return COLORS.PLAYER;
+        if (factionId === FACTIONS.NEUTRAL) return COLORS.NEUTRAL;
+        
+        const idx = factionId - FACTIONS.AI_START;
+        const aiColors = [
+            0xef4444, 0x22c55e, 0xa855f7, 0xf97316, 0xeab308, 
+            0x06b6d4, 0xec4899, 0x6366f1, 0x14b8a6, 0xf43f5e, 
+            0x84cc16, 0x8b5cf6
+        ];
+        if (idx >= 0 && idx < aiColors.length) return aiColors[idx];
+        
+        const hue = (idx * 137.508) % 360;
+        return this.hslToHex(hue, 70, 60);
+    }
+
+    hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return parseInt(`0x${f(0)}${f(8)}${f(4)}`);
+    }
+
+    renderMinimap(observerPos, currentTime) {
+        const ctx = this.minimapCtx;
+        const w = this.minimapCanvas.width;
+        const h = this.minimapCanvas.height;
+        
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+
+        const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
+        const offsetX = w / 2;
+        const offsetY = h / 2;
+
+        this.engine.suns.forEach(sun => {
+            const pState = sun.getPerceivedState(observerPos, currentTime);
+            const color = '#' + this.getFactionColor(pState.owner).toString(16).padStart(6, '0');
+            
+            ctx.fillStyle = color;
+            const mx = sun.pos.x * scale + offsetX;
+            const my = sun.pos.y * scale + offsetY;
+            const size = pState.owner === FACTIONS.NEUTRAL ? 2 : 4;
+            ctx.beginPath();
+            ctx.arc(mx, my, size, 0, Math.PI*2);
+            ctx.fill();
+        });
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        const viewW = (this.app.screen.width / this.camera.zoom) * scale;
+        const viewH = (this.app.screen.height / this.camera.zoom) * scale;
+        ctx.strokeRect(
+            (this.camera.x * scale + offsetX) - viewW/2,
+            (this.camera.y * scale + offsetY) - viewH/2,
+            viewW, viewH
+        );
+    }
+}
+
+// =========================================
+// AI CONTROLLER
+// =========================================
+class AIController {
+    constructor(engine, factionId) {
+        this.engine = engine;
+        this.factionId = factionId;
+        this.timer = 5 + random() * 5;
+    }
+
+    update(dt) {
+        this.timer -= dt;
+        if (this.timer <= 0) {
+            this.timer = 3 + random() * 4;
+            this.think();
+        }
+    }
+
+    think() {
+        const hwPos = this.engine.homeworlds[this.factionId];
+        const now = this.engine.time;
+
+        const mySuns = [];
+        const potentialTargets = [];
+
+        this.engine.suns.forEach(sun => {
+            const pState = sun.getPerceivedState(hwPos, now);
+            if (pState.owner === this.factionId) {
+                mySuns.push({ sun, pState });
+            } else {
+                potentialTargets.push({ sun, pState });
+            }
+        });
+
+        if (mySuns.length === 0) return;
+
+        mySuns.forEach(source => {
+            if (source.pState.units > SUN_LEVELS[source.pState.level].cost * 1.5 && source.pState.level < 3) {
+                 this.engine.issueUpgrade(this.factionId, source.sun.id);
+                 return;
             }
 
-            issueCommand(type, ownerId, sourceIds, targetId, percentage, dispatchTime, startPos) {
-                const id = this.nextId++;
-                const command = new Command(id, type, ownerId, sourceIds, targetId, percentage, dispatchTime, startPos);
-                this.commands.push(command);
-                if (ownerId === PLAYER_ID && type !== 'UPGRADE') {
-                     playSound(250, 'sawtooth', 0.1, 0.05);
+            if (source.pState.units > 30) {
+                let bestTarget = null;
+                let bestScore = -Infinity;
+
+                potentialTargets.forEach(target => {
+                    const d = dist(source.sun.pos, target.sun.pos);
+                    if (d > 800) return;
+
+                    let score = -d;
+                    if (target.pState.owner === FACTIONS.NEUTRAL) score += 500;
+                    score -= target.pState.units * 10;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTarget = target.sun;
+                    }
+                });
+
+                if (bestTarget && source.pState.units > bestTarget.getPerceivedState(hwPos, now).units * 1.2 + 10) {
+                    this.engine.issueAttack(this.factionId, [source.sun.id], bestTarget.id, 0.6);
                 }
             }
+        });
+    }
+}
 
-            // Post Game Stats Rendering
-            renderStatsGraph() {
-                const width = statsCanvas.width;
-                const height = statsCanvas.height;
-                const padding = 50;
-                statsCtx.clearRect(0, 0, width, height);
+// =========================================
+// MAIN GAME CONTROLLER
+// =========================================
+let engine, renderer, aiControllers;
+let gameLoopStarted = false;
 
-                if (this.statsHistory.length < 2) return;
+// Player State
+let selectedSunIds = new Set();
+let isSelecting = false;
+let isPanning = false;
+let selectStart = { x: 0, y: 0 };
+let lastMousePos = { x: 0, y: 0 };
+let mouseDownTime = 0;
+let panStartPos = { x: 0, y: 0 };
+let currentMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-                const startTime = this.statsHistory[0].time;
-                const endTime = this.statsHistory[this.statsHistory.length - 1].time;
-                const duration = endTime - startTime;
+function startGame() {
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('ui-layer').classList.remove('hidden');
 
-                let maxUnits = 0;
-                this.statsHistory.forEach(entry => {
-                    Object.values(entry.stats).forEach(stat => {
-                        if (stat.units > maxUnits) maxUnits = stat.units;
-                    });
-                });
+    const starsSliderVal = parseFloat(document.getElementById('opt-stars').value);
+    const numStars = Math.round(50 * Math.pow(200, starsSliderVal / 100));
+    const numAI = parseInt(document.getElementById('opt-ai').value);
+    
+    const speedSliderVal = parseFloat(document.getElementById('opt-speed').value);
+    const speed = 0.1 * Math.pow(500, speedSliderVal / 100);
 
-                if (maxUnits === 0) maxUnits = 100;
+    CONSTANTS.NUM_SUNS = numStars;
+    CONSTANTS.GAME_SPEED = speed;
 
-                // Draw Axes
-                statsCtx.strokeStyle = '#AAA';
-                statsCtx.lineWidth = 1;
-                statsCtx.beginPath();
-                statsCtx.moveTo(padding, padding);
-                statsCtx.lineTo(padding, height - padding);
-                statsCtx.lineTo(width - padding, height - padding);
-                statsCtx.stroke();
+    engine = new GameEngine();
+    engine.init(numAI);
 
-                // Draw Labels
-                statsCtx.fillStyle = '#AAA';
-                statsCtx.font = '12px sans-serif';
-                statsCtx.textAlign = 'center';
-                statsCtx.fillText("Total Unit Count (Power)", padding + (width-2*padding)/2, padding/2);
-                statsCtx.fillText("Time (s)", width/2, height - padding/4);
-                statsCtx.textAlign = 'right';
-                statsCtx.fillText(maxUnits.toFixed(0), padding - 5, padding + 5);
-                statsCtx.fillText("0", padding - 5, height - padding + 5);
-                statsCtx.fillText(((duration)/1000).toFixed(1) + "s", width - padding, height - padding + 20);
+    renderer = new GameRenderer(engine, 'game-canvas');
+    
+    aiControllers = [];
+    engine.aiFactions.forEach(fid => {
+        aiControllers.push(new AIController(engine, fid));
+    });
 
+    const pHome = engine.homeworlds[FACTIONS.PLAYER];
+    renderer.camera.x = renderer.targetCamera.x = pHome.x;
+    renderer.camera.y = renderer.targetCamera.y = pHome.y;
 
-                const graphWidth = width - 2 * padding;
-                const graphHeight = height - 2 * padding;
+    // Input Handling Setup
+    renderer.app.stage.hitArea = renderer.app.screen;
+    renderer.app.stage.interactive = true;
 
-                // Draw Lines
-                this.players.forEach(player => {
-                    statsCtx.strokeStyle = player.color.core;
-                    statsCtx.lineWidth = 2;
-                    statsCtx.beginPath();
-                    let started = false;
-                    this.statsHistory.forEach(entry => {
-                        const timeProgress = (entry.time - startTime) / duration;
-                        const x = padding + timeProgress * graphWidth;
-                        const stat = entry.stats[player.id];
-                        if (stat) {
-                            const unitProgress = stat.units / maxUnits;
-                            const y = height - padding - unitProgress * graphHeight;
-                            if (!started) {
-                                statsCtx.moveTo(x, y);
-                                started = true;
+    renderer.app.stage.on('pointerdown', (e) => {
+        const global = { x: e.global.x, y: e.global.y };
+        
+        if (e.data.button === 0) { // Left Click
+            isSelecting = true;
+            isPanning = false;
+            selectStart = { ...global };
+            renderer.selectionBoxGfx.clear();
+            mouseDownTime = Date.now();
+        } else if (e.data.button === 1 || e.data.button === 2) { // Middle or Right Click
+            isPanning = true;
+            isSelecting = false;
+            lastMousePos = { ...global };
+            panStartPos = { ...global };
+        }
+    });
+
+    renderer.app.stage.on('pointermove', (e) => {
+        const global = { x: e.global.x, y: e.global.y };
+        currentMousePos = { ...global };
+
+        if (isSelecting) {
+            const width = global.x - selectStart.x;
+            const height = global.y - selectStart.y;
+            if (Math.abs(width) > 2 || Math.abs(height) > 2) {
+                renderer.selectionBoxGfx.clear();
+                renderer.selectionBoxGfx.lineStyle(1, 0x3b82f6, 0.8);
+                renderer.selectionBoxGfx.beginFill(0x3b82f6, 0.2);
+                renderer.selectionBoxGfx.drawRect(Math.min(selectStart.x, global.x), Math.min(selectStart.y, global.y), Math.abs(width), Math.abs(height));
+                renderer.selectionBoxGfx.endFill();
+            }
+        } else if (isPanning) {
+            renderer.targetCamera.x -= (global.x - lastMousePos.x) / renderer.camera.zoom;
+            renderer.targetCamera.y -= (global.y - lastMousePos.y) / renderer.camera.zoom;
+            lastMousePos = { ...global };
+        }
+    });
+
+    renderer.app.stage.on('pointerup', (e) => {
+        const global = { x: e.global.x, y: e.global.y };
+
+        if (e.data.button === 0) { // Left button released
+            if (isSelecting) {
+                const width = global.x - selectStart.x;
+                const height = global.y - selectStart.y;
+                const dragDist = Math.sqrt(width*width + height*height);
+                
+                if (dragDist < 5) {
+                    const worldPos = renderer.world.toLocal(global);
+                    let clickedSun = null;
+                    for (const sun of engine.suns.values()) {
+                        if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                            clickedSun = sun;
+                            break;
+                        }
+                    }
+                    if (clickedSun) {
+                        if (clickedSun.owner === FACTIONS.PLAYER) {
+                            if (e.data.originalEvent.shiftKey) {
+                                if (selectedSunIds.has(clickedSun.id)) {
+                                    selectedSunIds.delete(clickedSun.id);
+                                } else {
+                                    selectedSunIds.add(clickedSun.id);
+                                }
                             } else {
-                                statsCtx.lineTo(x, y);
+                                selectedSunIds.clear();
+                                selectedSunIds.add(clickedSun.id);
+                            }
+                        } else {
+                            if (selectedSunIds.size > 0) {
+                                engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), clickedSun.id, 0.5);
                             }
                         }
-                    });
-                    statsCtx.stroke();
-                });
-
-                // Draw Event Markers
-                this.eventLog.forEach(event => {
-                    const timeProgress = (event.time - startTime) / duration;
-                    const x = padding + timeProgress * graphWidth;
-
-                    // Find the corresponding Y position (approximate)
-                    let y = height - padding;
-                    // Find the closest stats entry
-                    let closestEntry = this.statsHistory.reduce((prev, curr) =>
-                        Math.abs(curr.time - event.time) < Math.abs(prev.time - event.time) ? curr : prev
-                    );
-
-                    const playerInvolvedId = event.playerId;
-
-                    if (closestEntry && closestEntry.stats[playerInvolvedId]) {
-                        const unitProgress = closestEntry.stats[playerInvolvedId].units / maxUnits;
-                        y = height - padding - unitProgress * graphHeight;
-                    }
-
-                    const colorData = COLORS[event.playerId];
-                    statsCtx.fillStyle = colorData ? colorData.glow : '#FFF';
-                    statsCtx.font = '16px sans-serif';
-                    statsCtx.textAlign = 'center';
-                    // Offset markers slightly so they don't overlap the line
-                    statsCtx.fillText(event.type, x, y - 8);
-                });
-            }
-        }
-
-        // --- Rendering Engine ---
-
-        class Renderer {
-            constructor(game, ctx) {
-                this.game = game;
-                this.ctx = ctx;
-                this.player = game.players.find(p => p.id === PLAYER_ID);
-            }
-
-            draw() {
-                this.ctx.fillStyle = COLORS.background;
-                this.ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // The player observes the universe from the camera position for information delay.
-                const observerPos = { x: camera.x, y: camera.y };
-                const currentTime = this.game.currentTime;
-
-                // Apply camera transformations
-                this.ctx.save();
-                this.ctx.translate(canvas.width / 2, canvas.height / 2);
-                this.ctx.scale(camera.zoom, camera.zoom);
-                this.ctx.translate(-camera.x, -camera.y);
-
-                this.drawStars();
-
-                // Draw Suns and their perceived states
-                this.game.suns.forEach(sun => {
-                    const perceivedState = sun.getPerceivedState(observerPos, currentTime);
-                    this.drawSun(sun, perceivedState, currentTime);
-                });
-
-                // Draw Fleets (perceived)
-                this.game.fleets.forEach(fleet => {
-                    const perceivedState = fleet.getPerceivedState(observerPos, currentTime);
-                    if (perceivedState) {
-                        this.drawFleet(fleet, perceivedState);
-                    }
-                });
-
-                // Draw Commands (Player only sees their own commands in transit)
-                this.game.commands.forEach(cmd => {
-                    if (cmd.ownerId === PLAYER_ID) {
-                        this.drawCommand(cmd, currentTime);
-                    }
-                });
-
-                this.drawSelectionUI();
-
-                this.ctx.restore();
-
-                this.drawMinimap(observerPos, currentTime);
-            }
-
-            drawStars() {
-                this.game.stars.forEach(star => {
-                    this.ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
-                    this.ctx.beginPath();
-                    this.ctx.arc(star.x, star.y, star.size/2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
-            }
-
-            drawSun(sun, state, currentTime) {
-                const colorData = COLORS[state.ownerId] || COLORS[NEUTRAL_ID];
-                const radius = state.radius;
-
-                // 1. Core with Glow (using Radial Gradient for ambient look)
-                this.ctx.save();
-                const gradient = this.ctx.createRadialGradient(sun.x, sun.y, radius * 0.1, sun.x, sun.y, radius * 1.5);
-                gradient.addColorStop(0, colorData.glow);
-                gradient.addColorStop(0.5, colorData.core);
-                gradient.addColorStop(1, colorData.core + '00'); // Transparent edge
-
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(sun.x, sun.y, radius * 1.5, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Draw a solid core if neutral for a 'rocky' look
-                if (state.ownerId === NEUTRAL_ID) {
-                    this.ctx.fillStyle = colorData.core;
-                    this.ctx.beginPath();
-                    this.ctx.arc(sun.x, sun.y, radius, 0, Math.PI * 2);
-                    this.ctx.fill();
-                }
-
-                // 2. Pulsing Concentric Rings (Levels)
-                if (state.ownerId !== NEUTRAL_ID) {
-                    for (let i = 1; i <= state.level; i++) {
-                        const pulse = Math.sin(currentTime / 1000 * 2 + i) * 0.5 + 0.5;
-                        const ringRadius = radius + i * 8;
-                        const opacity = 0.2 + pulse * 0.2;
-
-                        this.ctx.strokeStyle = colorData.glow;
-                        this.ctx.globalAlpha = opacity;
-                        this.ctx.lineWidth = 2;
-                        this.ctx.beginPath();
-                        this.ctx.arc(sun.x, sun.y, ringRadius, 0, Math.PI * 2);
-                        this.ctx.stroke();
-                    }
-                    this.ctx.globalAlpha = 1.0;
-                }
-                
-                // 3. Capture Progress
-                if (state.capturingPlayerId && state.ownerId === NEUTRAL_ID) {
-                    // Filling Neutral Sun
-                    const captureColor = COLORS[state.capturingPlayerId].core;
-                    this.ctx.fillStyle = captureColor;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(sun.x, sun.y);
-                    const angle = Math.PI * 2 * state.captureProgress;
-                    this.ctx.arc(sun.x, sun.y, radius, -Math.PI/2, -Math.PI/2 + angle);
-                    this.ctx.fill();
-                } else if (state.ownerId !== NEUTRAL_ID && state.captureProgress < 1) {
-                    // Draining visualization: Show the remaining portion of the owner's color
-                    // First fill with 'drained' color (neutral/rocky)
-                    this.ctx.fillStyle = COLORS[NEUTRAL_ID].core;
-                     this.ctx.beginPath();
-                    this.ctx.arc(sun.x, sun.y, radius, 0, Math.PI*2);
-                    this.ctx.fill();
-                    
-                    // Then fill the remaining owned portion
-                    this.ctx.fillStyle = colorData.core;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(sun.x, sun.y);
-                    const angle = Math.PI * 2 * state.captureProgress;
-                    this.ctx.arc(sun.x, sun.y, radius, -Math.PI/2, -Math.PI/2 + angle);
-                    this.ctx.fill();
-                }
-
-                // 4. Selection Ring
-                if (inputState.selection.includes(sun.id) && state.ownerId === PLAYER_ID) {
-                    this.ctx.strokeStyle = COLORS[PLAYER_ID].glow;
-                    this.ctx.lineWidth = 3;
-                    this.ctx.beginPath();
-                    this.ctx.arc(sun.x, sun.y, radius + 15 + state.level * 5, 0, Math.PI * 2);
-                    this.ctx.stroke();
-                }
-
-                // 5. Rally Line (only if perceived owner is self)
-                if (sun.rallyTargetId && state.ownerId === PLAYER_ID) {
-                    const targetSun = this.game.suns.get(sun.rallyTargetId);
-                    if (targetSun) {
-                        this.ctx.strokeStyle = colorData.glow;
-                        this.ctx.lineWidth = 1;
-                        this.ctx.setLineDash([10, 10]);
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(sun.x, sun.y);
-                        this.ctx.lineTo(targetSun.x, targetSun.y);
-                        this.ctx.stroke();
-                        this.ctx.setLineDash([]);
-                    }
-                }
-
-                this.ctx.restore();
-
-                // 6. Unit Count (Numerical Display)
-                // We draw this outside the main save/restore block to use screen coordinates for consistent text size.
-                this.ctx.save();
-                const screenPos = worldToScreen(sun.x, sun.y);
-                this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-
-                this.ctx.fillStyle = '#FFFFFF';
-                this.ctx.font = '14px sans-serif';
-                this.ctx.textAlign = 'center';
-                this.ctx.shadowColor = '#000';
-                this.ctx.shadowBlur = 4;
-                // Adjust Y position based on zoom level and sun radius
-                const textYOffset = (radius + state.level * 8) * camera.zoom + 10;
-                this.ctx.fillText(Math.floor(state.units), screenPos.x, screenPos.y - textYOffset);
-
-                this.ctx.restore();
-
-                // 7. Orbiting Units (Particle cloud/swarm)
-                if (state.units > 0 && camera.zoom > 0.3) {
-                    const orbitRadius = radius + 20;
-                    const numParticles = Math.min(80, state.units);
-                    this.ctx.fillStyle = colorData.glow;
-                    for (let i = 0; i < numParticles; i++) {
-                        // Slow, stable, clockwise orbit
-                        const angle = -(currentTime / 5000) + (i / numParticles) * Math.PI * 2;
-                        // Add noise to the orbit for a loose, cloud-like swarm
-                        const noise = Math.sin(i * 15 + currentTime/2000) * 8;
-                        const ox = sun.x + Math.cos(angle) * (orbitRadius + noise);
-                        const oy = sun.y + Math.sin(angle) * (orbitRadius + noise);
-                        this.ctx.fillRect(ox-0.5, oy-0.5, 1.5, 1.5);
-                    }
-                }
-            }
-
-            drawFleet(fleet, state) {
-                const color = COLORS[fleet.ownerId];
-                const pos = state.pos;
-
-                // Comet-like stream effect
-                const angle = Math.atan2(fleet.targetY - fleet.startY, fleet.targetX - fleet.startX);
-                const tailLength = Math.min(50, state.units / 5 + 15);
-
-                const gradient = this.ctx.createLinearGradient(
-                    pos.x - Math.cos(angle) * tailLength,
-                    pos.y - Math.sin(angle) * tailLength,
-                    pos.x,
-                    pos.y
-                );
-                gradient.addColorStop(0, color.core + '00'); // Transparent tail start
-                gradient.addColorStop(0.8, color.core);
-                gradient.addColorStop(1, color.glow);
-
-                this.ctx.strokeStyle = gradient;
-                this.ctx.lineWidth = 3;
-                this.ctx.lineCap = 'round';
-
-                this.ctx.save();
-                this.ctx.shadowBlur = 20;
-                this.ctx.shadowColor = color.glow;
-
-                this.ctx.beginPath();
-                this.ctx.moveTo(pos.x - Math.cos(angle) * tailLength, pos.y - Math.sin(angle) * tailLength);
-                this.ctx.lineTo(pos.x, pos.y);
-                this.ctx.stroke();
-
-                this.ctx.restore();
-            }
-
-            drawCommand(cmd, currentTime) {
-                const color = COLORS[cmd.ownerId].glow;
-
-                cmd.packets.forEach(packet => {
-                    if (packet.arrived) return;
-
-                    const pos = cmd.getPacketPosition(packet, currentTime);
-
-                    this.ctx.save();
-                    this.ctx.translate(pos.x, pos.y);
-
-                    if (cmd.type === 'ATTACK' || cmd.type === 'RALLY') {
-                        // Sharp, arrow-like icon
-                        const angle = Math.atan2(packet.endY - packet.startY, packet.endX - packet.startX);
-                        this.ctx.rotate(angle);
-                        this.ctx.fillStyle = color;
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(8, 0);
-                        this.ctx.lineTo(-4, 4);
-                        this.ctx.lineTo(-4, -4);
-                        this.ctx.closePath();
-                        this.ctx.fill();
-                    } else if (cmd.type === 'UPGRADE') {
-                        // Swirling, nova-like icon (rotating starburst)
-                        this.ctx.rotate(currentTime / 300);
-                        this.ctx.strokeStyle = color;
-                        this.ctx.lineWidth = 2;
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(-6, 0); this.ctx.lineTo(6, 0);
-                        this.ctx.moveTo(0, -6); this.ctx.lineTo(0, 6);
-                        this.ctx.stroke();
-                    }
-                    this.ctx.restore();
-                });
-            }
-
-            drawSelectionUI() {
-                if (inputState.isDragging) {
-                    const start = screenToWorld(inputState.dragStart.x, inputState.dragStart.y);
-                    const end = screenToWorld(inputState.lastMousePos.x, inputState.lastMousePos.y);
-
-                    if (inputState.dragFromSun) {
-                        // Drawing potential rally line
-                        const sourceSun = this.game.suns.get(inputState.dragFromSun);
-                        if (sourceSun) {
-                            this.ctx.strokeStyle = COLORS[PLAYER_ID].glow;
-                            this.ctx.lineWidth = 2 / camera.zoom;
-                            this.ctx.setLineDash([15 / camera.zoom, 10 / camera.zoom]);
-                            this.ctx.beginPath();
-                            this.ctx.moveTo(sourceSun.x, sourceSun.y);
-                            this.ctx.lineTo(end.x, end.y);
-                            this.ctx.stroke();
-                            this.ctx.setLineDash([]);
-                        }
                     } else {
-                        // Drawing selection area (Circle selection)
-                        this.ctx.strokeStyle = COLORS.selection;
-                        this.ctx.fillStyle = COLORS.selection.replace('0.3', '0.1');
-                        this.ctx.lineWidth = 1 / camera.zoom;
+                         selectedSunIds.clear();
+                    }
+                } else {
+                    const startWorld = renderer.world.toLocal(selectStart);
+                    const endWorld = renderer.world.toLocal(global);
+                    const minX = Math.min(startWorld.x, endWorld.x);
+                    const maxX = Math.max(startWorld.x, endWorld.x);
+                    const minY = Math.min(startWorld.y, endWorld.y);
+                    const maxY = Math.max(startWorld.y, endWorld.y);
 
-                        // The prompt implies a circle encompassing the desired suns.
-                        // We interpret this as dragging from the center (start) to the edge (end).
-                        const center = start;
-                        const radius = distance(start.x, start.y, end.x, end.y);
+                    if (!e.data.originalEvent.shiftKey) selectedSunIds.clear();
 
-                        this.ctx.beginPath();
-                        this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
-                        this.ctx.fill();
-                        this.ctx.stroke();
+                    for (const sun of engine.suns.values()) {
+                         if (sun.owner === FACTIONS.PLAYER) {
+                             if (sun.pos.x >= minX && sun.pos.x <= maxX && sun.pos.y >= minY && sun.pos.y <= maxY) {
+                                 selectedSunIds.add(sun.id);
+                             }
+                         }
                     }
                 }
             }
-
-            drawMinimap(observerPos, currentTime) {
-                const size = minimapCanvas.width;
-                const scale = size / CONFIG.GALAXY_SIZE;
-                minimapCtx.clearRect(0, 0, size, size);
-
-                // Draw Suns (Perceived State - Minimap also adheres to light speed delay)
-                this.game.suns.forEach(sun => {
-                    const perceivedState = sun.getPerceivedState(observerPos, currentTime);
-                    const color = COLORS[perceivedState.ownerId] || COLORS[NEUTRAL_ID];
-                    minimapCtx.fillStyle = color.core;
-                    const x = sun.x * scale;
-                    const y = sun.y * scale;
-                    const radius = 2;
-                    minimapCtx.beginPath();
-                    minimapCtx.arc(x, y, radius, 0, Math.PI * 2);
-                    minimapCtx.fill();
-                });
-
-                // Draw Viewport Rectangle
-                const viewportWidth = canvas.width / camera.zoom;
-                const viewportHeight = canvas.height / camera.zoom;
-                const vx = (camera.x - viewportWidth / 2) * scale;
-                const vy = (camera.y - viewportHeight / 2) * scale;
-                const vw = viewportWidth * scale;
-                const vh = viewportHeight * scale;
-
-                minimapCtx.strokeStyle = '#FFFFFF';
-                minimapCtx.lineWidth = 1;
-                minimapCtx.strokeRect(vx, vy, vw, vh);
+            isSelecting = false;
+            renderer.selectionBoxGfx.clear();
+        } else if (e.data.button === 1) { 
+            isPanning = false;
+        } else if (e.data.button === 2) { 
+            if (isPanning) {
+                if (dist(panStartPos, global) < 5) {
+                    const worldPos = renderer.world.toLocal(global);
+                    let clickedSun = null;
+                    for (const sun of engine.suns.values()) {
+                        if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                            clickedSun = sun;
+                            break;
+                        }
+                    }
+                    if (clickedSun && selectedSunIds.size > 0) {
+                        engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), clickedSun.id, 0.5);
+                    }
+                }
+                isPanning = false;
             }
         }
+        mouseDownTime = 0;
+    });
 
-        // --- Input Handling ---
+    renderer.app.stage.on('pointertap', (e) => {
+         if (e.data.button !== 0) return;
+         const now = Date.now();
+         if (now - lastClickTime < 300) {
+            const worldPos = renderer.world.toLocal(e.global);
+            for (const sun of engine.suns.values()) {
+                if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                    if (sun.owner !== FACTIONS.PLAYER && selectedSunIds.size > 0) {
+                         engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), sun.id, 1.0);
+                    }
+                    break;
+                }
+            }
+         }
+         lastClickTime = now;
+    });
 
-        function getSunAt(worldX, worldY) {
-            let closestSun = null;
-            let minDist = Infinity;
-            // Make selection easier when zoomed out
-            const selectionTolerance = 15 / camera.zoom; 
+    window.addEventListener('wheel', (e) => {
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) renderer.targetCamera.zoom *= zoomFactor;
+        else renderer.targetCamera.zoom /= zoomFactor;
+        renderer.targetCamera.zoom = Math.max(CONSTANTS.MIN_ZOOM, Math.min(CONSTANTS.MAX_ZOOM, renderer.targetCamera.zoom));
+    });
 
-            game.suns.forEach(sun => {
-                const dist = distance(worldX, worldY, sun.x, sun.y);
-                if (dist < sun.radius + selectionTolerance && dist < minDist) {
-                    minDist = dist;
-                    closestSun = sun;
+    renderer.minimapCanvas.addEventListener('pointerdown', (e) => {
+        const rect = renderer.minimapCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        const w = renderer.minimapCanvas.width;
+        const h = renderer.minimapCanvas.height;
+        const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
+        
+        renderer.targetCamera.x = (mx - w/2) / scale;
+        renderer.targetCamera.y = (my - h/2) / scale;
+    });
+
+    gameLoopStarted = true;
+    lastTime = performance.now();
+    gameLoop();
+}
+
+// Start button listener
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+// Track keys including 'U' for upgrade, 'F' for fullscreen
+const keys = {};
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (gameLoopStarted) {
+        if (e.code === 'KeyU') {
+            selectedSunIds.forEach(sunId => {
+                const sun = engine.suns.get(sunId);
+                if (sun && sun.owner === FACTIONS.PLAYER) {
+                    engine.issueUpgrade(FACTIONS.PLAYER, sunId);
                 }
             });
-            return closestSun;
         }
-
-        function handleMouseDown(event) {
-            if (game.gameState !== 'RUNNING') return;
-            initAudio(); // Start audio on first interaction
-            event.preventDefault();
-            if (event.button !== 0) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            const worldPos = screenToWorld(mouseX, mouseY);
-
-            inputState.mouseDown = true;
-            inputState.dragStart.x = mouseX;
-            inputState.dragStart.y = mouseY;
-            inputState.isDragging = false;
-            inputState.dragFromSun = null;
-
-            const clickedSun = getSunAt(worldPos.x, worldPos.y);
-
-            if (clickedSun && clickedSun.ownerId === PLAYER_ID) {
-                // Start potential hold for upgrade or drag for rally/attack
-                inputState.holdStart = Date.now();
-                inputState.isHolding = true;
-                inputState.dragFromSun = clickedSun.id;
-
-                // Handle selection immediately on mouse down
-                if (!event.shiftKey && !inputState.selection.includes(clickedSun.id)) {
-                    inputState.selection = [clickedSun.id];
-                } else if (event.shiftKey && !inputState.selection.includes(clickedSun.id)) {
-                    inputState.selection.push(clickedSun.id);
-                }
-            } else {
-                // Clicking elsewhere prepares for circle selection or deselection
-                if (!event.shiftKey && inputState.selection.length > 0 && !clickedSun) {
-                     inputState.selection = [];
-                }
-            }
+    }
+    if (e.code === 'KeyF') {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => console.log(err));
+        } else {
+            document.exitFullscreen();
         }
+    }
+    if (e.code === 'KeyH') {
+        document.getElementById('help-panel').classList.toggle('hidden');
+    }
+    if (e.code === 'KeyL') {
+        document.getElementById('leaderboard').classList.toggle('hidden');
+    }
+});
+window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        function handleMouseMove(event) {
-            if (game.gameState !== 'RUNNING') return;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
+// =========================================
+// GAME LOOP
+// =========================================
+let lastTime = performance.now();
+let lastClickTime = 0;
+let leaderboardUpdateTimer = 0;
 
-            inputState.lastMousePos = { x: mouseX, y: mouseY };
+function updateLeaderboard(dt) {
+    leaderboardUpdateTimer -= dt;
+    if (leaderboardUpdateTimer > 0) return;
+    leaderboardUpdateTimer = 0.5;
 
-            if (inputState.mouseDown) {
-                const dx = mouseX - inputState.dragStart.x;
-                const dy = mouseY - inputState.dragStart.y;
-                // Check if movement exceeds a small threshold to start dragging
-                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                    inputState.isDragging = true;
-                    inputState.isHolding = false; // Cancel hold if dragging starts
-                }
-            }
+    const scores = {};
+    scores[FACTIONS.PLAYER] = 0;
+    engine.aiFactions.forEach(fid => scores[fid] = 0);
+
+    engine.suns.forEach(sun => {
+        if (sun.owner !== FACTIONS.NEUTRAL) {
+             scores[sun.owner] = (scores[sun.owner] || 0) + sun.units;
         }
+    });
+    engine.fleets.forEach(fleet => {
+        scores[fleet.owner] = (scores[fleet.owner] || 0) + fleet.units;
+    });
 
-        function handleMouseUp(event) {
-            if (game.gameState !== 'RUNNING') return;
-            if (event.button !== 0) return;
+    const sorted = Object.entries(scores)
+        .map(([fid, score]) => ({ fid: parseInt(fid), score }))
+        .sort((a, b) => b.score - a.score);
+        
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = '';
+    
+    sorted.forEach(entry => {
+        const isEliminated = entry.score < 1;
+        const color = renderer.getFactionColor(entry.fid);
+        const hexColor = '#' + color.toString(16).padStart(6, '0');
+        const name = entry.fid === FACTIONS.PLAYER ? 'Player' : `AI ${entry.fid - FACTIONS.AI_START + 1}`;
+        
+        const li = document.createElement('li');
+        li.className = `flex justify-between items-center`;
+        li.style.color = isEliminated ? '#666' : hexColor;
+        
+        const left = document.createElement('span');
+        left.textContent = name + (isEliminated ? ' <eliminated>' : '');
+        li.appendChild(left);
+        
+        const right = document.createElement('span');
+        right.textContent = Math.floor(entry.score).toLocaleString();
+        li.appendChild(right);
+        
+        list.appendChild(li);
+    });
+}
 
-            inputState.mouseDown = false;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            const worldPos = screenToWorld(mouseX, mouseY);
-            const now = Date.now();
-            const player = game.players.find(p => p.id === PLAYER_ID);
+function gameLoop() {
+    if (!gameLoopStarted) return;
+    const now = performance.now();
+    let realDt = Math.min((now - lastTime) / 1000, 0.1); 
+    let dt = realDt; // Copy for game logic updates
+    lastTime = now;
 
-            // 1. Check for Upgrade (Hold)
-            if (inputState.isHolding && inputState.dragFromSun && now - inputState.holdStart > 500) {
-                const sunId = inputState.dragFromSun;
-                if (inputState.selection.includes(sunId)) {
-                    // Commands originate from the player's Command Origin (HQ)
-                    game.issueCommand('UPGRADE', PLAYER_ID, [sunId], sunId, 0, game.currentTime, player.commandOrigin);
-                    inputState.isHolding = false;
-                    return;
-                }
-            }
-            inputState.isHolding = false;
+    // Apply speed modifier for simulation time
+    dt *= CONSTANTS.GAME_SPEED;
 
-            if (inputState.isDragging) {
-                if (inputState.dragFromSun) {
-                    // 2. Handle Drag Command (Rally or Attack from single sun)
-                    const targetSun = getSunAt(worldPos.x, worldPos.y);
-                    const sourceSun = game.suns.get(inputState.dragFromSun);
+    const panSpeed = (800 / renderer.camera.zoom) * realDt;
+    if (keys['KeyW'] || keys['ArrowUp']) renderer.targetCamera.y -= panSpeed;
+    if (keys['KeyS'] || keys['ArrowDown']) renderer.targetCamera.y += panSpeed;
+    if (keys['KeyA'] || keys['ArrowLeft']) renderer.targetCamera.x -= panSpeed;
+    if (keys['KeyD'] || keys['ArrowRight']) renderer.targetCamera.x += panSpeed;
 
-                    if (targetSun && sourceSun && targetSun.id !== sourceSun.id) {
-                        if (targetSun.ownerId === PLAYER_ID) {
-                            // Set Rally Line
-                             game.issueCommand('RALLY', PLAYER_ID, [sourceSun.id], targetSun.id, 0, game.currentTime, player.commandOrigin);
-                        } else {
-                            // Attack (Default 50% on drag release if starting from a sun)
-                             game.issueCommand('ATTACK', PLAYER_ID, [sourceSun.id], targetSun.id, 0.5, game.currentTime, player.commandOrigin);
-                        }
-                    } else if (sourceSun && !targetSun) {
-                        // Dragged to empty space: Cancel Rally
-                        game.issueCommand('RALLY', PLAYER_ID, [sourceSun.id], null, 0, game.currentTime, player.commandOrigin);
-                    }
+    if (document.fullscreenElement) {
+        const edgeThreshold = 15;
+        if (currentMousePos.x < edgeThreshold) renderer.targetCamera.x -= panSpeed;
+        if (currentMousePos.x > window.innerWidth - edgeThreshold) renderer.targetCamera.x += panSpeed;
+        if (currentMousePos.y < edgeThreshold) renderer.targetCamera.y -= panSpeed;
+        if (currentMousePos.y > window.innerHeight - edgeThreshold) renderer.targetCamera.y += panSpeed;
+    }
 
-                } else {
-                    // 3. Handle Circle Selection
-                    const start = screenToWorld(inputState.dragStart.x, inputState.dragStart.y);
-                    const end = worldPos;
+    engine.update(dt);
+    aiControllers.forEach(ai => ai.update(dt));
 
-                    // Center is the start point, radius is the distance dragged
-                    const center = start;
-                    const radius = distance(start.x, start.y, end.x, end.y);
+    renderer.updateCamera(realDt);
+    renderer.render(dt, selectedSunIds);
+    renderer.renderMinimap(engine.homeworlds[FACTIONS.PLAYER], engine.time);
+    
+    updateLeaderboard(realDt);
 
-                    if (!event.shiftKey) {
-                        inputState.selection = [];
-                    }
+    requestAnimationFrame(gameLoop);
+}
 
-                    game.suns.forEach(sun => {
-                        if (sun.ownerId === PLAYER_ID &&
-                            distance(sun.x, sun.y, center.x, center.y) <= radius) {
-                            if (!inputState.selection.includes(sun.id)) {
-                                inputState.selection.push(sun.id);
-                            }
-                        }
-                    });
-                }
-            } else {
-                // 4. Handle Click/Tap (Selection or Attack/Capture command)
-                const targetSun = getSunAt(worldPos.x, worldPos.y);
-
-                if (targetSun && inputState.selection.length > 0 && !inputState.selection.includes(targetSun.id)) {
-                    // Issuing command to a target
-                    const timeSinceLastTap = now - inputState.lastTapTime;
-                    const isDoubleTap = timeSinceLastTap < 300;
-                    inputState.lastTapTime = now;
-
-                    const percentage = isDoubleTap ? 1.0 : 0.5;
-                    
-                    game.issueCommand('ATTACK', PLAYER_ID, [...inputState.selection], targetSun.id, percentage, game.currentTime, player.commandOrigin);
-                }
-            }
-
-            inputState.isDragging = false;
-            inputState.dragFromSun = null;
-        }
-
-        function handleWheel(event) {
-            if (game.gameState !== 'RUNNING') return;
-            event.preventDefault();
-            
-            const mouseX = event.clientX;
-            const mouseY = event.clientY;
-            
-            // Get world coordinates under the mouse before zoom
-            const worldBefore = screenToWorld(mouseX, mouseY);
-
-            const zoomFactor = 1 - event.deltaY * CONFIG.ZOOM_SENSITIVITY;
-            camera.zoom *= zoomFactor;
-            camera.zoom = clamp(camera.zoom, CONFIG.MIN_ZOOM, CONFIG.MAX_ZOOM);
-
-            // Get world coordinates under the mouse after zoom
-            const worldAfter = screenToWorld(mouseX, mouseY);
-
-            // Adjust camera position so the point under the mouse stays the same
-            camera.x += (worldBefore.x - worldAfter.x);
-            camera.y += (worldBefore.y - worldAfter.y);
-            clampCamera();
-        }
-
-        function handleMinimapClick(event) {
-            if (game.gameState !== 'RUNNING') return;
-            const rect = minimapCanvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-
-            const scale = minimapCanvas.width / CONFIG.GALAXY_SIZE;
-            camera.x = mouseX / scale;
-            camera.y = mouseY / scale;
-            clampCamera();
-        }
-
-        function handleKeyDown(event) {
-            inputState.keys[event.key.toLowerCase()] = true;
-        }
-
-        function handleKeyUp(event) {
-            inputState.keys[event.key.toLowerCase()] = false;
-        }
-
-        function clampCamera() {
-            // Basic clamping to keep the view within the galaxy boundaries
-             camera.x = clamp(camera.x, 0, CONFIG.GALAXY_SIZE);
-             camera.y = clamp(camera.y, 0, CONFIG.GALAXY_SIZE);
-        }
-
-        // --- Initialization and Game Loop ---
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            const minimapSize = Math.min(window.innerWidth, window.innerHeight) * 0.15;
-            minimapCanvas.width = minimapSize;
-            minimapCanvas.height = minimapSize;
-        }
-
-        let renderer;
-        let gameLoopRunning = false;
-
-        function initGame() {
-            document.getElementById('gameOverScreen').style.display = 'none';
-            game = new Game();
-            renderer = new Renderer(game, ctx);
-            resizeCanvas();
-            if (!gameLoopRunning) {
-                // Start the loop only once
-                gameLoop();
-                gameLoopRunning = true;
-            }
-        }
-
-        function gameLoop() {
-            if (game) {
-                game.update();
-                renderer.draw();
-            }
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event Listeners Setup
-        window.addEventListener('resize', resizeCanvas);
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp); // Listen on window to catch mouseup outside canvas
-        canvas.addEventListener('wheel', handleWheel);
-        minimapCanvas.addEventListener('click', handleMinimapClick);
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-
-        // Initialize the game
-        initGame();
-    </script>
+</script>
 </body>
 </html>

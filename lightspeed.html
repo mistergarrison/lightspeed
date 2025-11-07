@@ -25,14 +25,14 @@
 <!-- Title Screen Overlay -->
 <div id="title-screen" class="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-50 p-5">
     <h1 class="text-5xl font-bold text-blue-400 uppercase tracking-widest mb-4">Light Speed</h1>
-    <div class="max-w-lg bg-gray-900 p-6 rounded-xl border-2 border-blue-900 shadow-lg shadow-blue-900/20">
+    <div class="max-w-xl bg-gray-900 p-6 rounded-xl border-2 border-blue-900 shadow-lg shadow-blue-900/20">
         <p class="text-gray-300 mb-6 leading-relaxed">
             A real-time strategy game where information travels at the speed of light. 
             Command your empire, but beware: what you see is in the past.
             Wait for light to travel. Trust nothing.
         </p>
 
-        <div class="space-y-4 mb-6 text-sm text-gray-400">
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-6 text-sm text-gray-400">
             <div><strong class="text-gray-300">WASD / Right-Drag:</strong> Pan Camera</div>
             <div><strong class="text-gray-300">Scroll:</strong> Zoom</div>
             <div><strong class="text-gray-300">Left-Drag:</strong> Select Box</div>
@@ -43,15 +43,17 @@
             <div><strong class="text-gray-300">Press 'F':</strong> Toggle Full Screen</div>
             <div><strong class="text-gray-300">Press 'H':</strong> Toggle Help</div>
             <div><strong class="text-gray-300">Press 'L':</strong> Toggle Leaderboard</div>
+            <div><strong class="text-gray-300">Press 'M':</strong> Menu & Score Graph</div>
+            <div><strong class="text-gray-300">Press +/-:</strong> Change Game Speed</div>
         </div>
 
         <div class="space-y-4 mb-8">
             <div>
                 <label class="flex justify-between text-gray-300 text-sm mb-1">
                     <span>Number of Stars</span>
-                    <span id="val-stars" class="text-blue-400">152</span>
+                    <span id="val-stars" class="text-blue-400">51</span>
                 </label>
-                <input type="range" id="opt-stars" min="0" max="100" step="1" value="21" class="w-full" oninput="const val = Math.round(50 * Math.pow(200, this.value / 100)); document.getElementById('val-stars').textContent = val">
+                <input type="range" id="opt-stars" min="0" max="100" step="1" value="18" class="w-full" oninput="const val = Math.round(20 + Math.pow(this.value / 100, 2) * 980); document.getElementById('val-stars').textContent = val">
             </div>
             <div>
                 <label class="flex justify-between text-gray-300 text-sm mb-1">
@@ -75,8 +77,44 @@
     </div>
 </div>
 
+<!-- Pause Menu Screen -->
+<div id="pause-menu-screen" class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5">
+    <h1 class="text-6xl font-bold uppercase tracking-widest mb-8 text-blue-400">Game Paused</h1>
+    <div class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center">
+        <canvas id="pause-score-graph" width="800" height="400" class="w-full mb-8 bg-black rounded border border-gray-800"></canvas>
+        <div class="flex justify-center gap-6 w-full">
+             <button id="pause-resume-btn" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Resume</button>
+             <button id="pause-restart-btn" class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Restart</button>
+             <button id="pause-menu-btn" class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Main Menu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Game Over Screen -->
+<div id="game-over-screen" class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5">
+    <h1 id="game-over-title" class="text-6xl font-bold uppercase tracking-widest mb-8"></h1>
+    <div class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center">
+        <canvas id="score-graph" width="800" height="400" class="w-full mb-8 bg-black rounded border border-gray-800"></canvas>
+        <div class="flex justify-center gap-6 w-full">
+             <button id="restart-btn" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Play Again</button>
+             <button id="continue-btn" class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs hidden text-center">Continue Observing</button>
+             <button id="menu-btn" class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Main Menu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Debug Menu -->
+<div id="debug-menu" class="absolute top-20 left-4 bg-gray-900 bg-opacity-95 p-4 rounded border border-red-900 z-50 hidden flex flex-col gap-2 w-48 ui-element shadow-lg shadow-red-900/20">
+    <div class="flex justify-between items-center mb-2">
+        <h3 class="text-red-500 font-bold uppercase text-sm tracking-wider">Debug</h3>
+        <span class="text-xs text-gray-500">(Shift+D)</span>
+    </div>
+    <button id="debug-win" class="px-3 py-3 bg-blue-900 hover:bg-blue-800 text-blue-100 text-xs uppercase rounded transition duration-200 border border-blue-700 font-bold tracking-wider">Force Win</button>
+    <button id="debug-lose" class="px-3 py-3 bg-red-900 hover:bg-red-800 text-red-100 text-xs uppercase rounded transition duration-200 border border-red-700 font-bold tracking-wider">Force Lose</button>
+</div>
+
 <!-- UI Overlay -->
-<div id="ui-layer" class="flex flex-col justify-between p-4 hidden">
+<div id="ui-layer" class="flex flex-col justify-between p-4 hidden pointer-events-none z-10">
     <div class="w-full flex items-start justify-between">
         <div class="flex flex-col gap-2">
             <div id="leaderboard" class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56">
@@ -90,7 +128,9 @@
                     Press 'U' to Upgrade selected Suns<br>
                     Press 'F' for Full Screen<br>
                     Press 'H' to Toggle Help<br>
-                    Press 'L' to Toggle Leaderboard
+                    Press 'L' to Toggle Leaderboard<br>
+                    Press 'M' for Menu & Score Graph<br>
+                    Press +/- to Change Speed
                 </div>
                 <div id="debug-info" class="text-xs text-red-500 mt-2 hidden"></div>
             </div>
@@ -103,6 +143,11 @@
             <div class="text-xs text-gray-500 text-right">PERCEIVED REALITY</div>
         </div>
     </div>
+</div>
+
+<!-- Speed Indicator -->
+<div id="speed-indicator" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 bg-opacity-90 px-4 py-2 rounded-xl border-2 border-blue-400 text-2xl font-bold text-blue-400 pointer-events-none transition-opacity duration-500 opacity-0 z-50 shadow-lg shadow-blue-900/50">
+    Speed: 1.0x
 </div>
 
 <script>
@@ -347,10 +392,17 @@ class GameEngine {
         this.nextId = 1;
         this.homeworlds = {}; // FactionID -> {x,y}
         this.aiFactions = []; // List of AI faction IDs
+        this.scoreHistory = [];
+        this.historyTimer = 0;
+        this.activeFactions = new Set();
     }
 
     init(numAI) {
         this.generateMap(numAI);
+        this.activeFactions.clear();
+        this.activeFactions.add(FACTIONS.PLAYER);
+        this.aiFactions.forEach(fid => this.activeFactions.add(fid));
+        this.recordScoreHistory();
     }
 
     generateMap(numAI) {
@@ -485,6 +537,12 @@ class GameEngine {
         for (const [sunId, arrivingFleets] of arrivalsAtSun.entries()) {
             this.resolveArrivals(this.suns.get(sunId), arrivingFleets);
         }
+
+        this.historyTimer += dt;
+        if (this.historyTimer >= 1.0) {
+            this.historyTimer = 0;
+            this.recordScoreHistory();
+        }
     }
 
     executeCommand(cmd) {
@@ -570,6 +628,84 @@ class GameEngine {
         sun.units = survivors;
         sun.addCheckpoint(this.time);
     }
+
+    recordScoreHistory() {
+        const scores = this.getCurrentScores();
+        this.scoreHistory.push({ time: this.time, scores });
+    }
+
+    getCurrentScores() {
+        const scores = {};
+        this.activeFactions.forEach(fid => scores[fid] = 0);
+        
+        this.suns.forEach(sun => {
+            if (sun.owner !== FACTIONS.NEUTRAL) {
+                 scores[sun.owner] = (scores[sun.owner] || 0) + sun.units;
+            }
+        });
+        this.fleets.forEach(fleet => {
+            scores[fleet.owner] = (scores[fleet.owner] || 0) + fleet.units;
+        });
+        return scores;
+    }
+
+    checkWinCondition() {
+        const scores = this.getCurrentScores();
+        const playerAlive = (scores[FACTIONS.PLAYER] || 0) > 0;
+        let aiAlive = false;
+        this.aiFactions.forEach(fid => {
+            if ((scores[fid] || 0) > 0) aiAlive = true;
+        });
+        
+        if (!playerAlive) return 'defeat';
+        if (playerAlive && !aiAlive) return 'victory';
+        return null;
+    }
+
+    forceGameOver(type) {
+        if (type === 'victory') {
+            // Ensure player has at least one sun or unit to satisfy win condition
+            let playerHasUnits = false;
+            this.suns.forEach(sun => { if (sun.owner === FACTIONS.PLAYER && sun.units > 0) playerHasUnits = true; });
+            this.fleets.forEach(fleet => { if (fleet.owner === FACTIONS.PLAYER) playerHasUnits = true; });
+            
+            if (!playerHasUnits) {
+                // Give player a home planet if they have nothing
+                const sun = this.suns.values().next().value;
+                if (sun) {
+                     sun.owner = FACTIONS.PLAYER;
+                     sun.units = 100;
+                     sun.level = 3;
+                }
+            }
+
+            // Eliminate AI
+            this.suns.forEach(sun => {
+                if (this.aiFactions.includes(sun.owner)) {
+                    sun.owner = FACTIONS.NEUTRAL;
+                    sun.units = 0;
+                }
+            });
+            for (const [id, fleet] of this.fleets.entries()) {
+                if (this.aiFactions.includes(fleet.owner)) {
+                    this.fleets.delete(id);
+                }
+            }
+        } else if (type === 'defeat') {
+             // Eliminate Player
+             this.suns.forEach(sun => {
+                 if (sun.owner === FACTIONS.PLAYER) {
+                     sun.owner = FACTIONS.NEUTRAL;
+                     sun.units = 0;
+                 }
+             });
+             for (const [id, fleet] of this.fleets.entries()) {
+                 if (fleet.owner === FACTIONS.PLAYER) {
+                     this.fleets.delete(id);
+                 }
+             }
+        }
+    }
 }
 
 // =========================================
@@ -610,6 +746,10 @@ class GameRenderer {
 
         this.minimapCanvas = document.getElementById('minimap');
         this.minimapCtx = this.minimapCanvas.getContext('2d');
+    }
+
+    destroy() {
+        this.app.destroy(true, { children: true, texture: true, baseTexture: true });
     }
 
     initWorld() {
@@ -984,7 +1124,9 @@ class AIController {
 // MAIN GAME CONTROLLER
 // =========================================
 let engine, renderer, aiControllers;
-let gameLoopStarted = false;
+let gameState = 'MENU'; // MENU, PLAYING, ENDED, OBSERVING, PAUSED
+let lastGameState = 'PLAYING';
+let gameOverCheckTimer = 0;
 
 // Player State
 let selectedSunIds = new Set();
@@ -999,9 +1141,11 @@ let currentMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 function startGame() {
     document.getElementById('title-screen').classList.add('hidden');
     document.getElementById('ui-layer').classList.remove('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('pause-menu-screen').classList.add('hidden');
 
     const starsSliderVal = parseFloat(document.getElementById('opt-stars').value);
-    const numStars = Math.round(50 * Math.pow(200, starsSliderVal / 100));
+    const numStars = Math.round(20 + Math.pow(starsSliderVal / 100, 2) * 980);
     const numAI = parseInt(document.getElementById('opt-ai').value);
     
     const speedSliderVal = parseFloat(document.getElementById('opt-speed').value);
@@ -1013,6 +1157,10 @@ function startGame() {
     engine = new GameEngine();
     engine.init(numAI);
 
+    if (renderer) {
+        renderer.destroy();
+        renderer = null;
+    }
     renderer = new GameRenderer(engine, 'game-canvas');
     
     aiControllers = [];
@@ -1185,19 +1333,218 @@ function startGame() {
         renderer.targetCamera.y = (my - h/2) / scale;
     });
 
-    gameLoopStarted = true;
+    gameState = 'PLAYING';
+    gameOverCheckTimer = 0;
     lastTime = performance.now();
     gameLoop();
 }
 
 // Start button listener
 document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('restart-btn').addEventListener('click', () => {
+    hideGameOver();
+    startGame();
+});
+document.getElementById('menu-btn').addEventListener('click', () => {
+    hideGameOver();
+    document.getElementById('title-screen').classList.remove('hidden');
+    document.getElementById('ui-layer').classList.add('hidden');
+    gameState = 'MENU';
+    if (renderer) {
+        renderer.destroy();
+        renderer = null;
+    }
+});
+document.getElementById('continue-btn').addEventListener('click', () => {
+    hideGameOver();
+    gameState = 'OBSERVING';
+});
+
+// Pause Menu Buttons Listeners
+document.getElementById('pause-resume-btn').addEventListener('click', () => {
+    togglePauseMenu();
+});
+document.getElementById('pause-restart-btn').addEventListener('click', () => {
+    document.getElementById('pause-menu-screen').classList.add('hidden');
+    startGame();
+});
+document.getElementById('pause-menu-btn').addEventListener('click', () => {
+    document.getElementById('pause-menu-screen').classList.add('hidden');
+    document.getElementById('title-screen').classList.remove('hidden');
+    document.getElementById('ui-layer').classList.add('hidden');
+    gameState = 'MENU';
+    if (renderer) {
+        renderer.destroy();
+        renderer = null;
+    }
+});
+
+// Debug Buttons Listeners
+document.getElementById('debug-win').addEventListener('click', () => {
+    engine.forceGameOver('victory');
+});
+document.getElementById('debug-lose').addEventListener('click', () => {
+    engine.forceGameOver('defeat');
+});
+
+let speedIndicatorTimeout = null;
+function showSpeedIndicator() {
+    const el = document.getElementById('speed-indicator');
+    el.textContent = `Speed: ${CONSTANTS.GAME_SPEED.toFixed(1)}x`;
+    el.classList.remove('opacity-0');
+    if (speedIndicatorTimeout) clearTimeout(speedIndicatorTimeout);
+    speedIndicatorTimeout = setTimeout(() => {
+        el.classList.add('opacity-0');
+        speedIndicatorTimeout = null;
+    }, 1500);
+}
+
+function showGameOver(isWin) {
+    gameState = 'ENDED';
+    const screen = document.getElementById('game-over-screen');
+    const title = document.getElementById('game-over-title');
+    const contBtn = document.getElementById('continue-btn');
+    
+    title.textContent = isWin ? 'VICTORY' : 'DEFEAT';
+    title.className = 'text-6xl font-bold uppercase tracking-widest mb-8 ' + (isWin ? 'text-blue-400' : 'text-red-500');
+    
+    if (isWin) {
+        contBtn.classList.add('hidden');
+    } else {
+        contBtn.classList.remove('hidden');
+    }
+    
+    screen.classList.remove('hidden');
+    drawScoreGraph('score-graph');
+}
+
+function hideGameOver() {
+    document.getElementById('game-over-screen').classList.add('hidden');
+}
+
+function togglePauseMenu() {
+    const pauseScreen = document.getElementById('pause-menu-screen');
+    if (gameState === 'PAUSED') {
+        pauseScreen.classList.add('hidden');
+        gameState = lastGameState;
+    } else {
+        lastGameState = gameState;
+        gameState = 'PAUSED';
+        pauseScreen.classList.remove('hidden');
+        drawScoreGraph('pause-score-graph');
+    }
+}
+
+let graphHoverData = { canvasId: null, x: 0, y: 0, active: false };
+
+function drawScoreGraph(canvasId) {
+    const cvs = document.getElementById(canvasId);
+    const ctx = cvs.getContext('2d');
+    const w = cvs.width;
+    const h = cvs.height;
+    
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(0, 0, w, h);
+    
+    const history = engine.scoreHistory;
+    if (!history || history.length === 0) return;
+    
+    const maxTime = history[history.length - 1].time;
+    let maxScore = 100;
+    history.forEach(entry => {
+        Object.values(entry.scores).forEach(s => maxScore = Math.max(maxScore, s));
+    });
+    maxScore *= 1.1; 
+    
+    const padding = 50;
+    const graphW = w - padding * 2;
+    const graphH = h - padding * 2;
+    
+    // Draw axes
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, h - padding);
+    ctx.lineTo(w - padding, h - padding);
+    ctx.stroke();
+    
+    const factions = Array.from(engine.activeFactions);
+    const isHovering = graphHoverData.canvasId === canvasId && graphHoverData.active;
+    let closestPoint = null;
+    let minDistance = 30;
+
+    factions.forEach(fid => {
+        const colorInt = renderer.getFactionColor(fid);
+        const color = '#' + colorInt.toString(16).padStart(6, '0');
+        const isPlayer = fid === FACTIONS.PLAYER;
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isPlayer ? 4 : 2;
+        ctx.beginPath();
+        
+        history.forEach((entry, i) => {
+            const x = padding + (entry.time / maxTime) * graphW;
+            const s = entry.scores[fid] || 0;
+            const y = (h - padding) - (s / maxScore) * graphH;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+
+            if (isHovering) {
+                const dx = x - graphHoverData.x;
+                const dy = y - graphHoverData.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestPoint = { x, y, score: s, fid, color, time: entry.time };
+                }
+            }
+        });
+        ctx.stroke();
+    });
+    
+    if (closestPoint) {
+        ctx.fillStyle = '#080808';
+        ctx.strokeStyle = closestPoint.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(closestPoint.x, closestPoint.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        const factionName = closestPoint.fid === FACTIONS.PLAYER ? 'Player' : `AI ${closestPoint.fid - FACTIONS.AI_START + 1}`;
+        const tooltipText = `${factionName}: ${Math.floor(closestPoint.score)}`;
+        ctx.font = '14px sans-serif';
+        const textWidth = ctx.measureText(tooltipText).width;
+        const tipX = Math.min(Math.max(closestPoint.x - textWidth/2, padding), w - padding - textWidth);
+        const tipY = Math.max(closestPoint.y - 15, padding + 20);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(tipX - 5, tipY - 15, textWidth + 10, 20);
+        ctx.fillStyle = closestPoint.color;
+        ctx.fillText(tooltipText, tipX, tipY);
+    }
+
+    ctx.fillStyle = '#666';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Time', w/2, h - 15);
+    ctx.save();
+    ctx.translate(20, h/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText('Score', 0, 0);
+    ctx.restore();
+    
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxScore), padding - 10, padding + 10);
+    ctx.fillText('0', padding - 10, h - padding);
+}
 
 // Track keys including 'U' for upgrade, 'F' for fullscreen
 const keys = {};
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (gameLoopStarted) {
+    if (gameState === 'PLAYING' || gameState === 'OBSERVING') {
         if (e.code === 'KeyU') {
             selectedSunIds.forEach(sunId => {
                 const sun = engine.suns.get(sunId);
@@ -1220,8 +1567,48 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyL') {
         document.getElementById('leaderboard').classList.toggle('hidden');
     }
+    if (e.code === 'KeyM') {
+        if (gameState === 'PLAYING' || gameState === 'OBSERVING' || gameState === 'PAUSED') {
+            togglePauseMenu();
+        }
+    }
+    if (e.shiftKey && e.code === 'KeyD') {
+        document.getElementById('debug-menu').classList.toggle('hidden');
+    }
+    if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+        let step = CONSTANTS.GAME_SPEED < 1.0 ? 0.1 : 0.5;
+        CONSTANTS.GAME_SPEED = Math.min(10.0, Math.round((CONSTANTS.GAME_SPEED + step) * 10) / 10);
+        showSpeedIndicator();
+    }
+    if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+        let step = CONSTANTS.GAME_SPEED <= 1.0 ? 0.1 : 0.5;
+        CONSTANTS.GAME_SPEED = Math.max(0.1, Math.round((CONSTANTS.GAME_SPEED - step) * 10) / 10);
+        showSpeedIndicator();
+    }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+function setupGraphInteractions() {
+    ['score-graph', 'pause-score-graph'].forEach(id => {
+        const cvs = document.getElementById(id);
+        cvs.addEventListener('mousemove', (e) => {
+            const rect = cvs.getBoundingClientRect();
+            const scaleX = cvs.width / rect.width;
+            const scaleY = cvs.height / rect.height;
+            graphHoverData = {
+                canvasId: id,
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY,
+                active: true
+            };
+            requestAnimationFrame(() => drawScoreGraph(id));
+        });
+        cvs.addEventListener('mouseleave', () => {
+            graphHoverData.active = false;
+            requestAnimationFrame(() => drawScoreGraph(id));
+        });
+    });
+}
 
 // =========================================
 // GAME LOOP
@@ -1235,19 +1622,7 @@ function updateLeaderboard(dt) {
     if (leaderboardUpdateTimer > 0) return;
     leaderboardUpdateTimer = 0.5;
 
-    const scores = {};
-    scores[FACTIONS.PLAYER] = 0;
-    engine.aiFactions.forEach(fid => scores[fid] = 0);
-
-    engine.suns.forEach(sun => {
-        if (sun.owner !== FACTIONS.NEUTRAL) {
-             scores[sun.owner] = (scores[sun.owner] || 0) + sun.units;
-        }
-    });
-    engine.fleets.forEach(fleet => {
-        scores[fleet.owner] = (scores[fleet.owner] || 0) + fleet.units;
-    });
-
+    const scores = engine.getCurrentScores();
     const sorted = Object.entries(scores)
         .map(([fid, score]) => ({ fid: parseInt(fid), score }))
         .sort((a, b) => b.score - a.score);
@@ -1278,11 +1653,17 @@ function updateLeaderboard(dt) {
 }
 
 function gameLoop() {
-    if (!gameLoopStarted) return;
+    requestAnimationFrame(gameLoop);
+    if (gameState === 'MENU' || gameState === 'ENDED') return;
+
     const now = performance.now();
     let realDt = Math.min((now - lastTime) / 1000, 0.1); 
     let dt = realDt; // Copy for game logic updates
     lastTime = now;
+
+    if (gameState === 'PAUSED') {
+        return;
+    }
 
     // Apply speed modifier for simulation time
     dt *= CONSTANTS.GAME_SPEED;
@@ -1310,8 +1691,20 @@ function gameLoop() {
     
     updateLeaderboard(realDt);
 
-    requestAnimationFrame(gameLoop);
+    if (gameState === 'PLAYING' && engine.time > 5.0) {
+        gameOverCheckTimer += realDt;
+        if (gameOverCheckTimer >= 1.0) {
+            gameOverCheckTimer = 0;
+            const winState = engine.checkWinCondition();
+            if (winState) {
+                showGameOver(winState === 'victory');
+            }
+        }
+    }
 }
+
+// Initialize graph interaction handlers
+setupGraphInteractions();
 
 </script>
 </body>

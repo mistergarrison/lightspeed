@@ -1,418 +1,604 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Light Speed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: #eee; font-family: sans-serif; }
-        canvas { display: block; touch-action: none; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .ui-element { pointer-events: auto; }
-        /* Range slider styles */
-        input[type=range] { height: 26px; -webkit-appearance: none; margin: 10px 0; width: 100%; background: transparent; }
-        input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #3b82f6; border-radius: 1px; }
-        input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ffffff; cursor: pointer; -webkit-appearance: none; margin-top: -5px; }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #000;
+        color: #eee;
+        font-family: sans-serif;
+      }
+      canvas {
+        display: block;
+        touch-action: none;
+      }
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .ui-element {
+        pointer-events: auto;
+      }
+      /* Range slider styles */
+      input[type="range"] {
+        height: 26px;
+        -webkit-appearance: none;
+        margin: 10px 0;
+        width: 100%;
+        background: transparent;
+      }
+      input[type="range"]:focus {
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+        background: #3b82f6;
+        border-radius: 1px;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: #ffffff;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -5px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <!-- Main Canvas will be appended by Pixi -->
 
-<!-- Main Canvas will be appended by Pixi -->
-
-<!-- Title Screen Overlay -->
-<div id="title-screen" class="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-50 p-5">
-    <h1 class="text-5xl font-bold text-blue-400 uppercase tracking-widest mb-4">Light Speed</h1>
-    <div class="max-w-xl bg-gray-900 p-6 rounded-xl border-2 border-blue-900 shadow-lg shadow-blue-900/20">
+    <!-- Title Screen Overlay -->
+    <div
+      id="title-screen"
+      class="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-50 p-5"
+    >
+      <h1 class="text-5xl font-bold text-blue-400 uppercase tracking-widest mb-4">Light Speed</h1>
+      <div
+        class="max-w-xl bg-gray-900 p-6 rounded-xl border-2 border-blue-900 shadow-lg shadow-blue-900/20"
+      >
         <p class="text-gray-300 mb-6 leading-relaxed">
-            A real-time strategy game where information travels at the speed of light. 
-            Command your empire, but beware: what you see is in the past.
-            Wait for light to travel. Trust nothing.
+          A real-time strategy game where information travels at the speed of light. Command your
+          empire, but beware: what you see is in the past. Wait for light to travel. Trust nothing.
         </p>
 
         <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-6 text-sm text-gray-400">
-            <div><strong class="text-gray-300">WASD / Right-Drag:</strong> Pan Camera</div>
-            <div><strong class="text-gray-300">Scroll:</strong> Zoom</div>
-            <div><strong class="text-gray-300">Left-Drag:</strong> Select Box</div>
-            <div><strong class="text-gray-300">Left Click:</strong> Select / Attack (50%)</div>
-            <div><strong class="text-gray-300">Double Left Click:</strong> Attack (100%)</div>
-            <div><strong class="text-gray-300">Shift + Click:</strong> Add/Remove Selection</div>
-            <div><strong class="text-gray-300">Press 'U':</strong> Upgrade Selected Suns</div>
-            <div><strong class="text-gray-300">Press 'F':</strong> Toggle Full Screen</div>
-            <div><strong class="text-gray-300">Press 'H':</strong> Toggle Help</div>
-            <div><strong class="text-gray-300">Press 'L':</strong> Toggle Leaderboard</div>
-            <div><strong class="text-gray-300">Press 'M':</strong> Menu & Score Graph</div>
-            <div><strong class="text-gray-300">Press +/-:</strong> Change Game Speed</div>
+          <div><strong class="text-gray-300">WASD / Right-Drag:</strong> Pan Camera</div>
+          <div><strong class="text-gray-300">Scroll:</strong> Zoom</div>
+          <div><strong class="text-gray-300">Left-Drag:</strong> Select Box</div>
+          <div><strong class="text-gray-300">Left Click:</strong> Select / Attack (50%)</div>
+          <div><strong class="text-gray-300">Double Left Click:</strong> Attack (100%)</div>
+          <div><strong class="text-gray-300">Right Click:</strong> Redirect Fleets</div>
+          <div><strong class="text-gray-300">Shift + Click:</strong> Add/Remove Selection</div>
+          <div><strong class="text-gray-300">Press 'U':</strong> Upgrade Selected Suns</div>
+          <div><strong class="text-gray-300">Press 'F':</strong> Toggle Full Screen</div>
+          <div><strong class="text-gray-300">Press 'H':</strong> Toggle Help</div>
+          <div><strong class="text-gray-300">Press 'L':</strong> Toggle Leaderboard</div>
+          <div><strong class="text-gray-300">Press 'M':</strong> Menu & Score Graph</div>
+          <div><strong class="text-gray-300">Press +/-:</strong> Change Game Speed</div>
         </div>
 
         <div class="space-y-4 mb-8">
-            <div>
-                <label class="flex justify-between text-gray-300 text-sm mb-1">
-                    <span>Number of Stars</span>
-                    <span id="val-stars" class="text-blue-400">51</span>
-                </label>
-                <input type="range" id="opt-stars" min="0" max="100" step="1" value="18" class="w-full" oninput="const val = Math.round(20 + Math.pow(this.value / 100, 2) * 980); document.getElementById('val-stars').textContent = val">
-            </div>
-            <div>
-                <label class="flex justify-between text-gray-300 text-sm mb-1">
-                    <span>Number of Opponents</span>
-                    <span id="val-ai" class="text-blue-400">2</span>
-                </label>
-                <input type="range" id="opt-ai" min="1" max="20" value="2" class="w-full" oninput="document.getElementById('val-ai').textContent = this.value">
-            </div>
-            <div>
-                <label class="flex justify-between text-gray-300 text-sm mb-1">
-                    <span>Game Speed</span>
-                    <span id="val-speed" class="text-blue-400">1.0x</span>
-                </label>
-                <input type="range" id="opt-speed" min="0" max="100" step="1" value="37" class="w-full" oninput="const val = 0.1 * Math.pow(500, this.value / 100); document.getElementById('val-speed').textContent = val.toFixed(1) + 'x'">
-            </div>
+          <div>
+            <label class="flex justify-between text-gray-300 text-sm mb-1">
+              <span>Number of Stars</span>
+              <span id="val-stars" class="text-blue-400">51</span>
+            </label>
+            <input
+              type="range"
+              id="opt-stars"
+              min="0"
+              max="100"
+              step="1"
+              value="18"
+              class="w-full"
+              oninput="const val = Math.round(20 + Math.pow(this.value / 100, 2) * 980); document.getElementById('val-stars').textContent = val"
+            />
+          </div>
+          <div>
+            <label class="flex justify-between text-gray-300 text-sm mb-1">
+              <span>Number of Opponents</span>
+              <span id="val-ai" class="text-blue-400">2</span>
+            </label>
+            <input
+              type="range"
+              id="opt-ai"
+              min="1"
+              max="20"
+              value="2"
+              class="w-full"
+              oninput="document.getElementById('val-ai').textContent = this.value"
+            />
+          </div>
+          <div>
+            <label class="flex justify-between text-gray-300 text-sm mb-1">
+              <span>Game Speed</span>
+              <span id="val-speed" class="text-blue-400">1.0x</span>
+            </label>
+            <input
+              type="range"
+              id="opt-speed"
+              min="0"
+              max="100"
+              step="1"
+              value="37"
+              class="w-full"
+              oninput="const val = 0.1 * Math.pow(500, this.value / 100); document.getElementById('val-speed').textContent = val.toFixed(1) + 'x'"
+            />
+          </div>
         </div>
 
-        <button id="start-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wider rounded transition duration-200">
-            Initialize Universe
+        <button
+          id="start-btn"
+          class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wider rounded transition duration-200"
+        >
+          Initialize Universe
         </button>
+      </div>
     </div>
-</div>
 
-<!-- Pause Menu Screen -->
-<div id="pause-menu-screen" class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5">
-    <h1 class="text-6xl font-bold uppercase tracking-widest mb-8 text-blue-400">Game Paused</h1>
-    <div class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center">
-        <canvas id="pause-score-graph" width="800" height="400" class="w-full mb-8 bg-black rounded border border-gray-800"></canvas>
+    <!-- Pause Menu Screen -->
+    <div
+      id="pause-menu-screen"
+      class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5"
+    >
+      <h1 class="text-6xl font-bold uppercase tracking-widest mb-8 text-blue-400">Game Paused</h1>
+      <div
+        class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center"
+      >
+        <canvas
+          id="pause-score-graph"
+          width="800"
+          height="400"
+          class="w-full mb-8 bg-black rounded border border-gray-800"
+        ></canvas>
         <div class="flex justify-center gap-6 w-full">
-             <button id="pause-resume-btn" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Resume</button>
-             <button id="pause-restart-btn" class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Restart</button>
-             <button id="pause-menu-btn" class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Main Menu</button>
+          <button
+            id="pause-resume-btn"
+            class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center"
+          >
+            Resume
+          </button>
+          <button
+            id="pause-restart-btn"
+            class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center"
+          >
+            Restart
+          </button>
+          <button
+            id="pause-menu-btn"
+            class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center"
+          >
+            Main Menu
+          </button>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- Game Over Screen -->
-<div id="game-over-screen" class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5">
-    <h1 id="game-over-title" class="text-6xl font-bold uppercase tracking-widest mb-8"></h1>
-    <div class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center">
-        <canvas id="score-graph" width="800" height="400" class="w-full mb-8 bg-black rounded border border-gray-800"></canvas>
+    <!-- Game Over Screen -->
+    <div
+      id="game-over-screen"
+      class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 hidden p-5"
+    >
+      <h1 id="game-over-title" class="text-6xl font-bold uppercase tracking-widest mb-8"></h1>
+      <div
+        class="bg-gray-900 p-8 rounded-2xl border-2 border-blue-900 shadow-2xl shadow-blue-900/50 max-w-5xl w-full flex flex-col items-center"
+      >
+        <canvas
+          id="score-graph"
+          width="800"
+          height="400"
+          class="w-full mb-8 bg-black rounded border border-gray-800"
+        ></canvas>
         <div class="flex justify-center gap-6 w-full">
-             <button id="restart-btn" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Play Again</button>
-             <button id="continue-btn" class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs hidden text-center">Continue Observing</button>
-             <button id="menu-btn" class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center">Main Menu</button>
+          <button
+            id="restart-btn"
+            class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center"
+          >
+            Play Again
+          </button>
+          <button
+            id="continue-btn"
+            class="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs hidden text-center"
+          >
+            Continue Observing
+          </button>
+          <button
+            id="menu-btn"
+            class="px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold uppercase rounded transition duration-200 text-lg flex-1 max-w-xs text-center"
+          >
+            Main Menu
+          </button>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- Debug Menu -->
-<div id="debug-menu" class="absolute top-20 left-4 bg-gray-900 bg-opacity-95 p-4 rounded border border-red-900 z-50 hidden flex flex-col gap-2 w-48 ui-element shadow-lg shadow-red-900/20">
-    <div class="flex justify-between items-center mb-2">
+    <!-- Debug Menu -->
+    <div
+      id="debug-menu"
+      class="absolute top-20 left-4 bg-gray-900 bg-opacity-95 p-4 rounded border border-red-900 z-50 hidden flex flex-col gap-2 w-48 ui-element shadow-lg shadow-red-900/20"
+    >
+      <div class="flex justify-between items-center mb-2">
         <h3 class="text-red-500 font-bold uppercase text-sm tracking-wider">Debug</h3>
         <span class="text-xs text-gray-500">(Shift+D)</span>
+      </div>
+      <button
+        id="debug-win"
+        class="px-3 py-3 bg-blue-900 hover:bg-blue-800 text-blue-100 text-xs uppercase rounded transition duration-200 border border-blue-700 font-bold tracking-wider"
+      >
+        Force Win
+      </button>
+      <button
+        id="debug-lose"
+        class="px-3 py-3 bg-red-900 hover:bg-red-800 text-red-100 text-xs uppercase rounded transition duration-200 border border-red-700 font-bold tracking-wider"
+      >
+        Force Lose
+      </button>
     </div>
-    <button id="debug-win" class="px-3 py-3 bg-blue-900 hover:bg-blue-800 text-blue-100 text-xs uppercase rounded transition duration-200 border border-blue-700 font-bold tracking-wider">Force Win</button>
-    <button id="debug-lose" class="px-3 py-3 bg-red-900 hover:bg-red-800 text-red-100 text-xs uppercase rounded transition duration-200 border border-red-700 font-bold tracking-wider">Force Lose</button>
-</div>
 
-<!-- UI Overlay -->
-<div id="ui-layer" class="flex flex-col justify-between p-4 hidden pointer-events-none z-10">
-    <div class="w-full flex items-start justify-between">
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="flex flex-col justify-between p-4 hidden pointer-events-none z-10">
+      <div class="w-full flex items-start justify-between">
         <div class="flex flex-col gap-2">
-            <div id="leaderboard" class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56">
-                 <h3 class="text-sm font-bold text-blue-400 mb-2 uppercase tracking-widest">Leaderboard</h3>
-                 <ul id="leaderboard-list" class="flex flex-col gap-1 text-xs"></ul>
+          <div
+            id="leaderboard"
+            class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56"
+          >
+            <h3 class="text-sm font-bold text-blue-400 mb-2 uppercase tracking-widest">
+              Leaderboard
+            </h3>
+            <ul id="leaderboard-list" class="flex flex-col gap-1 text-xs"></ul>
+          </div>
+          <div
+            id="help-panel"
+            class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56 text-sm hidden"
+          >
+            <h1 class="text-xl font-bold text-blue-400 uppercase tracking-widest">Light Speed</h1>
+            <div class="text-xs text-gray-400 mt-1">
+              Left-Drag Select | Right-Click to Attack/Redirect<br />
+              Press 'U' to Upgrade selected Suns<br />
+              Press 'F' for Full Screen<br />
+              Press 'H' to Toggle Help<br />
+              Press 'L' to Toggle Leaderboard<br />
+              Press 'M' for Menu & Score Graph<br />
+              Press +/- to Change Speed
             </div>
-            <div id="help-panel" class="bg-gray-900 bg-opacity-80 p-3 rounded border border-blue-900 ui-element w-56 text-sm hidden">
-                <h1 class="text-xl font-bold text-blue-400 uppercase tracking-widest">Light Speed</h1>
-                <div class="text-xs text-gray-400 mt-1">
-                    Left-Drag Select | Right-Click to Attack<br>
-                    Press 'U' to Upgrade selected Suns<br>
-                    Press 'F' for Full Screen<br>
-                    Press 'H' to Toggle Help<br>
-                    Press 'L' to Toggle Leaderboard<br>
-                    Press 'M' for Menu & Score Graph<br>
-                    Press +/- to Change Speed
-                </div>
-                <div id="debug-info" class="text-xs text-red-500 mt-2 hidden"></div>
-            </div>
+            <div id="debug-info" class="text-xs text-red-500 mt-2 hidden"></div>
+          </div>
         </div>
         <div class="flex flex-col gap-2 items-end ml-auto">
-             <!-- Minimap Container -->
-            <div id="minimap-container" class="w-48 h-48 bg-black border-2 border-gray-700 relative overflow-hidden ui-element">
-                <canvas id="minimap" width="200" height="200" class="w-full h-full cursor-crosshair"></canvas>
-            </div>
-            <div class="text-xs text-gray-500 text-right">PERCEIVED REALITY</div>
+          <!-- Minimap Container -->
+          <div
+            id="minimap-container"
+            class="w-48 h-48 bg-black border-2 border-gray-700 relative overflow-hidden ui-element"
+          >
+            <canvas
+              id="minimap"
+              width="200"
+              height="200"
+              class="w-full h-full cursor-crosshair"
+            ></canvas>
+          </div>
+          <div class="text-xs text-gray-500 text-right">PERCEIVED REALITY</div>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- Speed Indicator -->
-<div id="speed-indicator" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 bg-opacity-90 px-4 py-2 rounded-xl border-2 border-blue-400 text-2xl font-bold text-blue-400 pointer-events-none transition-opacity duration-500 opacity-0 z-50 shadow-lg shadow-blue-900/50">
-    Speed: 1.0x
-</div>
+    <!-- Speed Indicator -->
+    <div
+      id="speed-indicator"
+      class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 bg-opacity-90 px-4 py-2 rounded-xl border-2 border-blue-400 text-2xl font-bold text-blue-400 pointer-events-none transition-opacity duration-500 opacity-0 z-50 shadow-lg shadow-blue-900/50"
+    >
+      Speed: 1.0x
+    </div>
 
-<script>
-/**
- * LIGHT SPEED - Full LLM Prompt Implementation
- * 
- * Core Concept: True State vs Perceived State.
- * All logic happens in True State.
- * Rendering is based on Perceived State, delayed by distance / C.
- */
+    <script>
+      /**
+       * LIGHT SPEED - Full LLM Prompt Implementation
+       *
+       * Core Concept: True State vs Perceived State.
+       * All logic happens in True State.
+       * Rendering is based on Perceived State, delayed by distance / C.
+       */
 
-document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener("contextmenu", (e) => e.preventDefault());
 
-// =========================================
-// CONSTANTS & CONFIG
-// =========================================
-// Default config, overridden by title screen
-let CONSTANTS = {
-    GALAXY_WIDTH: 2000,
-    GALAXY_HEIGHT: 2000,
-    GALAXY_RADIUS: 950,
-    LIGHT_SPEED_C: 60,
-    UNIT_SPEED: 20,
-    ZOOM_START: 1.5,
-    MIN_ZOOM: 0.5,
-    MAX_ZOOM: 10.0,
-    LOD_ZOOM_THRESHOLD: 2.5,
-    UPGRADE_DURATION: 25.0,
-    MIN_SUN_SPACING: 80,
-    NUM_SUNS: 150,
-    HOMEWORLD_RIM_FACTOR: 0.9,
-    TICK_RATE: 60,
-    GAME_SPEED: 1.0
-};
+      // =========================================
+      // CONSTANTS & CONFIG
+      // =========================================
+      // Default config, overridden by title screen
+      let CONSTANTS = {
+        GALAXY_WIDTH: 2000,
+        GALAXY_HEIGHT: 2000,
+        GALAXY_RADIUS: 950,
+        LIGHT_SPEED_C: 60,
+        UNIT_SPEED: 20,
+        ZOOM_START: 1.5,
+        MIN_ZOOM: 0.5,
+        MAX_ZOOM: 10.0,
+        LOD_ZOOM_THRESHOLD: 2.5,
+        UPGRADE_DURATION: 25.0,
+        MIN_SUN_SPACING: 80,
+        NUM_SUNS: 150,
+        HOMEWORLD_RIM_FACTOR: 0.9,
+        TICK_RATE: 60,
+        GAME_SPEED: 1.0,
+      };
 
-// Debug / Testing flags
-const FLAGS = {
-    DEBUG_SHOW_TRUE_STATE: false,
-    RANDOM_SEED: null,
-    SOUND_ENABLED: false
-};
+      // Debug / Testing flags
+      const FLAGS = {
+        DEBUG_SHOW_TRUE_STATE: false,
+        RANDOM_SEED: null,
+        SOUND_ENABLED: false,
+      };
 
-let COLORS = {
-    NEUTRAL: 0x666666,
-    PLAYER: 0x3b82f6, // Blue-500
-    AI_1: 0xef4444,   // Red-500
-    AI_2: 0x22c55e,   // Green-500
-    AI_3: 0xa855f7,   // Purple-500
-    SELECTION: 0xffffff,
-    BACKGROUND: 0x080808
-};
+      let COLORS = {
+        NEUTRAL: 0xffffff,
+        PLAYER: 0x3b82f6, // Blue-500
+        AI_1: 0xef4444, // Red-500
+        AI_2: 0x22c55e, // Green-500
+        AI_3: 0xa855f7, // Purple-500
+        SELECTION: 0xffffff,
+        BACKGROUND: 0x080808,
+      };
 
-let FACTIONS = {
-    NEUTRAL: 0,
-    PLAYER: 1,
-    AI_START: 2
-};
+      let FACTIONS = {
+        NEUTRAL: 0,
+        PLAYER: 1,
+        AI_START: 2,
+      };
 
-const SUN_LEVELS = [
-    { rate: 0, cap: 50, cost: 0 },     // Level 0 (Unoccupied/Neutral small)
-    { rate: 0.4, cap: 100, cost: 80 },   // Level 1
-    { rate: 1.0, cap: 250, cost: 250 },  // Level 2
-    { rate: 2.4, cap: 600, cost: 600 }, // Level 3
-    { rate: 6.0, cap: 1500, cost: 0 }   // Level 4 (Max)
-];
+      const SUN_LEVELS = [
+        { rate: 0, cap: 50, cost: 0 }, // Level 0 (Unoccupied/Neutral small)
+        { rate: 0.4, cap: 100, cost: 80 }, // Level 1
+        { rate: 1.0, cap: 250, cost: 250 }, // Level 2
+        { rate: 2.4, cap: 600, cost: 600 }, // Level 3
+        { rate: 6.0, cap: 1500, cost: 0 }, // Level 4 (Max)
+      ];
 
-// =========================================
-// UTILITIES
-// =========================================
-let seed = FLAGS.RANDOM_SEED || Date.now();
-function random() {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-}
+      // =========================================
+      // UTILITIES
+      // =========================================
+      let seed = FLAGS.RANDOM_SEED || Date.now();
+      function random() {
+        seed = (seed * 9301 + 49297) % 233280;
+        return seed / 233280;
+      }
 
-function dist(p1, p2) {
-    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-}
+      function dist(p1, p2) {
+        return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+      }
 
-function lerp(a, b, t) { return a + (b - a) * t; }
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
 
-function lerpPos(p1, p2, t) {
-    return { x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) };
-}
+      function lerpPos(p1, p2, t) {
+        return { x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) };
+      }
 
-// =========================================
-// GAME STATE CLASSES (True State)
-// =========================================
+      // =========================================
+      // GAME STATE CLASSES (True State)
+      // =========================================
 
-class Sun {
-    constructor(id, x, y, level, owner, units) {
-        this.id = id;
-        this.pos = { x, y };
-        this.level = level;
-        this.owner = owner;
-        this.units = units;
-        this.upgradeTimer = 0;
-        this.radius = 15 + level * 5;
+      class Sun {
+        constructor(id, x, y, level, owner, units) {
+          this.id = id;
+          this.pos = { x, y };
+          this.level = level;
+          this.owner = owner;
+          this.units = units;
+          this.upgradeTimer = 0;
+          this.radius = 15 + level * 5;
 
-        // History for Time-Delayed Perception
-        this.history = []; 
-        this.addCheckpoint(0);
-    }
+          // History for Time-Delayed Perception
+          this.history = [];
+          this.addCheckpoint(0);
 
-    addCheckpoint(time) {
-        this.history.push({
+          // Events like battles
+          this.battleEvents = [];
+        }
+
+        addCheckpoint(time) {
+          this.history.push({
             time: time,
             units: this.units,
             owner: this.owner,
             level: this.level,
             rate: this.getProductionRate(),
-            upgrading: this.upgradeTimer > 0
-        });
-        if (this.history.length > 50) this.history.shift();
-    }
-
-    getProductionRate() {
-        if (this.owner === FACTIONS.NEUTRAL && this.level < 2) return 0;
-        return SUN_LEVELS[this.level].rate;
-    }
-
-    getMaxCapacity() {
-        return SUN_LEVELS[this.level].cap;
-    }
-
-    tick(dt, time) {
-        if (this.owner !== FACTIONS.NEUTRAL || this.level >= 2) {
-             const rate = this.getProductionRate();
-             const cap = this.getMaxCapacity();
-             if (this.units < cap) {
-                 this.units = Math.min(cap, this.units + rate * dt);
-             }
+            upgrading: this.upgradeTimer > 0,
+          });
+          if (this.history.length > 50) this.history.shift();
         }
 
-        if (this.upgradeTimer > 0) {
+        addBattleEvent(time) {
+          this.battleEvents.push(time);
+          // Keep events for 2 minutes to ensure they are seen even with max delay
+          const cutoff = time - 120;
+          if (this.battleEvents.length > 0 && this.battleEvents[0] < cutoff) {
+            this.battleEvents = this.battleEvents.filter((t) => t >= cutoff);
+          }
+        }
+
+        getProductionRate() {
+          if (this.owner === FACTIONS.NEUTRAL && this.level < 2) return 0;
+          return SUN_LEVELS[this.level].rate;
+        }
+
+        getMaxCapacity() {
+          return SUN_LEVELS[this.level].cap;
+        }
+
+        tick(dt, time) {
+          if (this.owner !== FACTIONS.NEUTRAL || this.level >= 2) {
+            const rate = this.getProductionRate();
+            const cap = this.getMaxCapacity();
+            if (this.units < cap) {
+              this.units = Math.min(cap, this.units + rate * dt);
+            }
+          }
+
+          if (this.upgradeTimer > 0) {
             this.upgradeTimer -= dt;
             if (this.upgradeTimer <= 0) {
-                this.level = Math.min(this.level + 1, SUN_LEVELS.length - 1);
-                this.upgradeTimer = 0;
-                this.addCheckpoint(time);
+              this.level = Math.min(this.level + 1, SUN_LEVELS.length - 1);
+              this.upgradeTimer = 0;
+              this.addCheckpoint(time);
             }
-        }
-    }
-
-    getPerceivedState(observerPos, currentTime) {
-        if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
-             return { units: Math.floor(this.units), owner: this.owner, level: this.level, upgrading: this.upgradeTimer > 0 };
+          }
         }
 
-        const delay = dist(this.pos, observerPos) / CONSTANTS.LIGHT_SPEED_C;
-        const perceivedTime = Math.max(0, currentTime - delay);
+        getPerceivedState(observerPos, currentTime) {
+          if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
+            return {
+              units: Math.floor(this.units),
+              owner: this.owner,
+              level: this.level,
+              upgrading: this.upgradeTimer > 0,
+            };
+          }
 
-        let cp = this.history[0];
-        for (let i = this.history.length - 1; i >= 0; i--) {
+          const delay = dist(this.pos, observerPos) / CONSTANTS.LIGHT_SPEED_C;
+          const perceivedTime = Math.max(0, currentTime - delay);
+
+          let cp = this.history[0];
+          for (let i = this.history.length - 1; i >= 0; i--) {
             if (this.history[i].time <= perceivedTime) {
-                cp = this.history[i];
-                break;
+              cp = this.history[i];
+              break;
             }
-        }
+          }
 
-        let perceivedUnits = cp.units;
-        const rate = (cp.owner !== FACTIONS.NEUTRAL || cp.level >= 2) ? SUN_LEVELS[cp.level].rate : 0;
-        const cap = SUN_LEVELS[cp.level].cap;
+          let perceivedUnits = cp.units;
+          const rate =
+            cp.owner !== FACTIONS.NEUTRAL || cp.level >= 2 ? SUN_LEVELS[cp.level].rate : 0;
+          const cap = SUN_LEVELS[cp.level].cap;
 
-        if (perceivedUnits < cap) {
-             perceivedUnits = Math.min(cap, perceivedUnits + rate * (perceivedTime - cp.time));
-        }
+          if (perceivedUnits < cap) {
+            perceivedUnits = Math.min(cap, perceivedUnits + rate * (perceivedTime - cp.time));
+          }
 
-        return {
+          return {
             units: Math.floor(perceivedUnits),
             owner: cp.owner,
             level: cp.level,
-            upgrading: cp.upgrading
-        };
-    }
-}
+            upgrading: cp.upgrading,
+          };
+        }
+      }
 
-class Fleet {
-    constructor(id, owner, sourcePos, targetSunId, units, launchTime) {
-        this.id = id;
-        this.owner = owner;
-        this.sourcePos = { ...sourcePos };
-        this.targetSunId = targetSunId;
-        this.units = units;
-        this.launchTime = launchTime;
-        
-        this.targetPos = null; 
-        this.arrivalTime = 0;
-        this.processed = false;
-    }
+      class Fleet {
+        constructor(id, owner, sourcePos, targetSunId, units, launchTime) {
+          this.id = id;
+          this.owner = owner;
+          this.sourcePos = { ...sourcePos };
+          this.targetSunId = targetSunId;
+          this.units = units;
+          this.launchTime = launchTime;
 
-    getPerceivedPos(observerPos, currentTime, targetSunPos) {
-        if (!this.targetPos) this.targetPos = targetSunPos;
-
-        if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
-             if (currentTime < this.launchTime) return null;
-             if (currentTime >= this.arrivalTime) return this.targetPos;
-             const t = (currentTime - this.launchTime) / (this.arrivalTime - this.launchTime);
-             return lerpPos(this.sourcePos, this.targetPos, t);
+          this.targetPos = null;
+          this.arrivalTime = 0;
+          this.processed = false;
+          this.redirected = false; // Flag to indicate this fleet was redirected and shouldn't fight
         }
 
-        const dSource = dist(this.sourcePos, observerPos);
-        const dTarget = dist(this.targetPos, observerPos);
-        
-        const t_p_start = this.launchTime + dSource / CONSTANTS.LIGHT_SPEED_C;
-        const t_p_end = this.arrivalTime + dTarget / CONSTANTS.LIGHT_SPEED_C;
+        getTruePos(time) {
+          if (time < this.launchTime) return this.sourcePos;
+          if (time >= this.arrivalTime) return this.targetPos;
+          const t = (time - this.launchTime) / (this.arrivalTime - this.launchTime);
+          return lerpPos(this.sourcePos, this.targetPos, t);
+        }
 
-        if (currentTime < t_p_start) return null;
-        
-        const gracePeriod = 0.5; 
-        if (currentTime >= t_p_end + gracePeriod) return null;
+        getPerceivedPos(observerPos, currentTime, targetSunPos) {
+          if (!this.targetPos) this.targetPos = targetSunPos;
 
-        const t = (currentTime - t_p_start) / (t_p_end - t_p_start);
-        return lerpPos(this.sourcePos, this.targetPos, Math.max(0, Math.min(1, t)));
-    }
-}
+          if (FLAGS.DEBUG_SHOW_TRUE_STATE) {
+            return this.getTruePos(currentTime);
+          }
 
-class Command {
-    constructor(id, type, owner, homeworldPos, sourceSunId, targetSunId, issueTime) {
-        this.id = id;
-        this.type = type; // 'ATTACK', 'UPGRADE'
-        this.owner = owner;
-        this.startPos = { ...homeworldPos };
-        this.sourceSunId = sourceSunId;
-        this.targetSunId = targetSunId;
-        this.issueTime = issueTime;
-        this.targetPos = null; 
-        this.arrivalTime = 0;
-        this.executed = false;
-    }
-}
+          const dSource = dist(this.sourcePos, observerPos);
+          const dTarget = dist(this.targetPos, observerPos);
 
-// =========================================
-// ENGINE (TRUE STATE)
-// =========================================
-class GameEngine {
-    constructor() {
-        this.suns = new Map();
-        this.fleets = new Map();
-        this.commands = [];
-        this.time = 0;
-        this.nextId = 1;
-        this.homeworlds = {}; // FactionID -> {x,y}
-        this.aiFactions = []; // List of AI faction IDs
-        this.scoreHistory = [];
-        this.historyTimer = 0;
-        this.activeFactions = new Set();
-    }
+          const t_p_start = this.launchTime + dSource / CONSTANTS.LIGHT_SPEED_C;
+          const t_p_end = this.arrivalTime + dTarget / CONSTANTS.LIGHT_SPEED_C;
 
-    init(numAI) {
-        this.generateMap(numAI);
-        this.activeFactions.clear();
-        this.activeFactions.add(FACTIONS.PLAYER);
-        this.aiFactions.forEach(fid => this.activeFactions.add(fid));
-        this.recordScoreHistory();
-    }
+          if (currentTime < t_p_start) return null;
 
-    generateMap(numAI) {
-        const R = CONSTANTS.GALAXY_RADIUS;
-        let attempts = 0;
-        const maxAttempts = CONSTANTS.NUM_SUNS * 500;
-        while (this.suns.size < CONSTANTS.NUM_SUNS && attempts < maxAttempts) {
+          const gracePeriod = 0.5;
+          if (currentTime >= t_p_end + gracePeriod) return null;
+
+          const t = (currentTime - t_p_start) / (t_p_end - t_p_start);
+          return lerpPos(this.sourcePos, this.targetPos, Math.max(0, Math.min(1, t)));
+        }
+      }
+
+      class Command {
+        constructor(id, type, owner, homeworldPos, sourceSunId, targetSunId, issueTime) {
+          this.id = id;
+          this.type = type; // 'ATTACK', 'UPGRADE', 'REDIRECT'
+          this.owner = owner;
+          this.startPos = { ...homeworldPos };
+          this.sourceSunId = sourceSunId;
+          this.targetSunId = targetSunId;
+          this.issueTime = issueTime;
+          this.targetPos = null;
+          this.arrivalTime = 0;
+          this.executed = false;
+          this.fleetId = null; // For redirect
+        }
+      }
+
+      // =========================================
+      // ENGINE (TRUE STATE)
+      // =========================================
+      class GameEngine {
+        constructor() {
+          this.suns = new Map();
+          this.fleets = new Map();
+          this.commands = [];
+          this.time = 0;
+          this.nextId = 1;
+          this.homeworlds = {}; // FactionID -> {x,y}
+          this.aiFactions = []; // List of AI faction IDs
+          this.scoreHistory = [];
+          this.historyTimer = 0;
+          this.activeFactions = new Set();
+        }
+
+        init(numAI) {
+          this.generateMap(numAI);
+          this.activeFactions.clear();
+          this.activeFactions.add(FACTIONS.PLAYER);
+          this.aiFactions.forEach((fid) => this.activeFactions.add(fid));
+          this.recordScoreHistory();
+        }
+
+        generateMap(numAI) {
+          const R = CONSTANTS.GALAXY_RADIUS;
+          let attempts = 0;
+          const maxAttempts = CONSTANTS.NUM_SUNS * 500;
+          while (this.suns.size < CONSTANTS.NUM_SUNS && attempts < maxAttempts) {
             attempts++;
             const r_cand = random() * R;
-            const threshold = (4 - 3 * r_cand / R) / 4;
+            const threshold = (4 - (3 * r_cand) / R) / 4;
             if (random() > threshold) continue;
 
             const theta = random() * Math.PI * 2;
@@ -422,134 +608,190 @@ class GameEngine {
 
             let tooClose = false;
             for (const sun of this.suns.values()) {
-                if (dist(pos, sun.pos) < CONSTANTS.MIN_SUN_SPACING) {
-                    tooClose = true;
-                    break;
-                }
+              if (dist(pos, sun.pos) < CONSTANTS.MIN_SUN_SPACING) {
+                tooClose = true;
+                break;
+              }
             }
             if (tooClose) continue;
 
             let level = 1;
             let units = 15;
             const typeRoll = random();
-            if (typeRoll < 0.2) { level = 2; units = 60; }
-            else if (typeRoll < 0.5) { level = 1; units = 30; }
+            if (typeRoll < 0.2) {
+              level = 2;
+              units = 60;
+            } else if (typeRoll < 0.5) {
+              level = 1;
+              units = 30;
+            }
 
             const sun = new Sun(this.nextId++, x, y, level, FACTIONS.NEUTRAL, units);
             this.suns.set(sun.id, sun);
-        }
+          }
 
-        // 2. Place Homeworlds on Rim
-        const hwDist = R * CONSTANTS.HOMEWORLD_RIM_FACTOR;
-        const startAngle = random() * Math.PI * 2;
-        const totalFactions = numAI + 1; // Player + AI
-        const angleStep = (Math.PI * 2) / totalFactions;
+          // 2. Place Homeworlds on Rim
+          const hwDist = R * CONSTANTS.HOMEWORLD_RIM_FACTOR;
+          const startAngle = random() * Math.PI * 2;
+          const totalFactions = numAI + 1; // Player + AI
+          const angleStep = (Math.PI * 2) / totalFactions;
 
-        this.setupHomeworld(FACTIONS.PLAYER, hwDist, startAngle);
-        
-        for (let i = 0; i < numAI; i++) {
+          this.setupHomeworld(FACTIONS.PLAYER, hwDist, startAngle);
+
+          for (let i = 0; i < numAI; i++) {
             const factionId = FACTIONS.AI_START + i;
             this.aiFactions.push(factionId);
             this.setupHomeworld(factionId, hwDist, startAngle + angleStep * (i + 1));
-        }
-    }
-
-    setupHomeworld(factionId, r, theta) {
-        const pos = { x: r * Math.cos(theta), y: r * Math.sin(theta) };
-        this.homeworlds[factionId] = pos;
-        
-        let nearest = null;
-        let minDist = Infinity;
-        for (const sun of this.suns.values()) {
-             if (sun.owner !== FACTIONS.NEUTRAL) continue;
-             const d = dist(pos, sun.pos);
-             if (d < minDist) { minDist = d; nearest = sun; }
+          }
         }
 
-        if (nearest) {
+        setupHomeworld(factionId, r, theta) {
+          const pos = { x: r * Math.cos(theta), y: r * Math.sin(theta) };
+          this.homeworlds[factionId] = pos;
+
+          let nearest = null;
+          let minDist = Infinity;
+          for (const sun of this.suns.values()) {
+            if (sun.owner !== FACTIONS.NEUTRAL) continue;
+            const d = dist(pos, sun.pos);
+            if (d < minDist) {
+              minDist = d;
+              nearest = sun;
+            }
+          }
+
+          if (nearest) {
             nearest.pos = pos;
             nearest.owner = factionId;
             nearest.level = 1;
             nearest.units = 50;
             nearest.addCheckpoint(0);
+          }
         }
-    }
 
-    issueAttack(factionId, sourceIds, targetId, percentage = 0.5) {
-        const hw = this.homeworlds[factionId];
-        if (!hw) return;
+        issueAttack(factionId, sourceIds, targetId, percentage = 0.5) {
+          const hw = this.homeworlds[factionId];
+          if (!hw) return;
 
-        sourceIds.forEach(sid => {
+          sourceIds.forEach((sid) => {
             if (sid === targetId) return;
-            const cmd = new Command(this.nextId++, 'ATTACK', factionId, hw, sid, targetId, this.time);
+            const cmd = new Command(
+              this.nextId++,
+              "ATTACK",
+              factionId,
+              hw,
+              sid,
+              targetId,
+              this.time,
+            );
             const sourceSun = this.suns.get(sid);
             cmd.targetPos = sourceSun.pos;
             cmd.arrivalTime = this.time + dist(hw, sourceSun.pos) / CONSTANTS.LIGHT_SPEED_C;
             cmd.percentage = percentage;
             this.commands.push(cmd);
-        });
-    }
-
-    issueUpgrade(factionId, sunId) {
-        const hw = this.homeworlds[factionId];
-        const sun = this.suns.get(sunId);
-        if (!hw || !sun) return;
-
-        const cmd = new Command(this.nextId++, 'UPGRADE', factionId, hw, sunId, null, this.time);
-        cmd.targetPos = sun.pos;
-        cmd.arrivalTime = this.time + dist(hw, sun.pos) / CONSTANTS.LIGHT_SPEED_C;
-        this.commands.push(cmd);
-    }
-
-    update(dt) {
-        this.time += dt;
-
-        for (const sun of this.suns.values()) {
-            sun.tick(dt, this.time);
+          });
         }
 
-        for (let i = this.commands.length - 1; i >= 0; i--) {
+        issueUpgrade(factionId, sunId) {
+          const hw = this.homeworlds[factionId];
+          const sun = this.suns.get(sunId);
+          if (!hw || !sun) return;
+
+          const cmd = new Command(this.nextId++, "UPGRADE", factionId, hw, sunId, null, this.time);
+          cmd.targetPos = sun.pos;
+          cmd.arrivalTime = this.time + dist(hw, sun.pos) / CONSTANTS.LIGHT_SPEED_C;
+          this.commands.push(cmd);
+        }
+
+        issueRedirect(factionId, fleetIds, targetSunId) {
+          const hw = this.homeworlds[factionId];
+          if (!hw) return;
+          const targetSun = this.suns.get(targetSunId);
+          if (!targetSun) return;
+
+          fleetIds.forEach((fid) => {
+            const fleet = this.fleets.get(fid);
+            if (!fleet || fleet.owner !== factionId || fleet.processed) return;
+
+            // Calculate the point where the command will intercept the fleet
+            // We iteratively approximate the intercept time
+            let interceptTime = this.time;
+            for (let i = 0; i < 3; i++) {
+              const pos = fleet.getTruePos(interceptTime);
+              const d = dist(hw, pos);
+              interceptTime = this.time + d / CONSTANTS.LIGHT_SPEED_C;
+            }
+
+            if (interceptTime >= fleet.arrivalTime) return; // Too late
+
+            const cmd = new Command(
+              this.nextId++,
+              "REDIRECT",
+              factionId,
+              hw,
+              null,
+              targetSunId,
+              this.time,
+            );
+            cmd.fleetId = fid;
+            cmd.targetPos = fleet.getTruePos(interceptTime); // For visual line
+            cmd.arrivalTime = interceptTime;
+            this.commands.push(cmd);
+          });
+        }
+
+        update(dt) {
+          this.time += dt;
+
+          for (const sun of this.suns.values()) {
+            sun.tick(dt, this.time);
+          }
+
+          for (let i = this.commands.length - 1; i >= 0; i--) {
             const cmd = this.commands[i];
             if (!cmd.executed && this.time >= cmd.arrivalTime) {
-                this.executeCommand(cmd);
-                cmd.executed = true;
+              this.executeCommand(cmd);
+              cmd.executed = true;
             }
-        }
-        this.commands = this.commands.filter(c => !c.executed);
+          }
+          this.commands = this.commands.filter((c) => !c.executed);
 
-        const arrivalsAtSun = new Map();
-        const maxDelay = (CONSTANTS.GALAXY_WIDTH * 1.5) / CONSTANTS.LIGHT_SPEED_C + 2;
+          const arrivalsAtSun = new Map();
+          const maxDelay = (CONSTANTS.GALAXY_WIDTH * 1.5) / CONSTANTS.LIGHT_SPEED_C + 2;
 
-        for (const [fid, fleet] of this.fleets.entries()) {
-             if (!fleet.processed && this.time >= fleet.arrivalTime) {
-                 fleet.processed = true;
-                 if (!arrivalsAtSun.has(fleet.targetSunId)) {
-                     arrivalsAtSun.set(fleet.targetSunId, []);
-                 }
-                 arrivalsAtSun.get(fleet.targetSunId).push(fleet);
-             }
+          for (const [fid, fleet] of this.fleets.entries()) {
+            if (!fleet.processed && this.time >= fleet.arrivalTime) {
+              fleet.processed = true;
+              // Only process arrival if not redirected
+              if (!fleet.redirected) {
+                if (!arrivalsAtSun.has(fleet.targetSunId)) {
+                  arrivalsAtSun.set(fleet.targetSunId, []);
+                }
+                arrivalsAtSun.get(fleet.targetSunId).push(fleet);
+              }
+            }
 
-             if (fleet.processed && this.time > fleet.arrivalTime + maxDelay) {
-                 this.fleets.delete(fid);
-             }
-        }
+            if (fleet.processed && this.time > fleet.arrivalTime + maxDelay) {
+              this.fleets.delete(fid);
+            }
+          }
 
-        for (const [sunId, arrivingFleets] of arrivalsAtSun.entries()) {
+          for (const [sunId, arrivingFleets] of arrivalsAtSun.entries()) {
             this.resolveArrivals(this.suns.get(sunId), arrivingFleets);
-        }
+          }
 
-        this.historyTimer += dt;
-        if (this.historyTimer >= 1.0) {
+          this.historyTimer += dt;
+          if (this.historyTimer >= 1.0) {
             this.historyTimer = 0;
             this.recordScoreHistory();
+          }
         }
-    }
 
-    executeCommand(cmd) {
-        const sun = this.suns.get(cmd.sourceSunId);
-        if (sun.owner !== cmd.owner) return;
+        executeCommand(cmd) {
+          if (cmd.type === "ATTACK") {
+            const sun = this.suns.get(cmd.sourceSunId);
+            if (!sun || sun.owner !== cmd.owner) return;
 
-        if (cmd.type === 'ATTACK') {
             const sendUnits = Math.floor(sun.units * cmd.percentage);
             if (sendUnits < 1) return;
 
@@ -557,49 +799,90 @@ class GameEngine {
             sun.addCheckpoint(this.time);
 
             const targetSun = this.suns.get(cmd.targetSunId);
-            const fleet = new Fleet(this.nextId++, cmd.owner, sun.pos, cmd.targetSunId, sendUnits, this.time);
+            const fleet = new Fleet(
+              this.nextId++,
+              cmd.owner,
+              sun.pos,
+              cmd.targetSunId,
+              sendUnits,
+              this.time,
+            );
             fleet.targetPos = targetSun.pos;
             fleet.arrivalTime = this.time + dist(sun.pos, targetSun.pos) / CONSTANTS.UNIT_SPEED;
-            
-            this.fleets.set(fleet.id, fleet);
 
-        } else if (cmd.type === 'UPGRADE') {
+            this.fleets.set(fleet.id, fleet);
+          } else if (cmd.type === "UPGRADE") {
+            const sun = this.suns.get(cmd.sourceSunId);
+            if (!sun || sun.owner !== cmd.owner) return;
+
             if (sun.level >= SUN_LEVELS.length - 1) return;
             if (sun.upgradeTimer > 0) return;
-            
+
             const cost = SUN_LEVELS[sun.level].cost;
             if (sun.units >= cost) {
-                sun.units -= cost;
-                sun.upgradeTimer = CONSTANTS.UPGRADE_DURATION;
-                sun.addCheckpoint(this.time);
+              sun.units -= cost;
+              sun.upgradeTimer = CONSTANTS.UPGRADE_DURATION;
+              sun.addCheckpoint(this.time);
             }
-        }
-    }
+          } else if (cmd.type === "REDIRECT") {
+            const fleet = this.fleets.get(cmd.fleetId);
+            if (!fleet || fleet.processed) return;
 
-    resolveArrivals(sun, fleets) {
-        const forces = {};
-        forces[sun.owner] = (forces[sun.owner] || 0) + sun.units;
-        fleets.forEach(f => {
+            const currentPos = fleet.getTruePos(this.time);
+            const targetSun = this.suns.get(cmd.targetSunId);
+            if (!targetSun) return;
+
+            // Create a NEW fleet starting from current position
+            const newFleet = new Fleet(
+              this.nextId++,
+              fleet.owner,
+              currentPos,
+              cmd.targetSunId,
+              fleet.units,
+              this.time,
+            );
+            newFleet.targetPos = targetSun.pos;
+            newFleet.arrivalTime =
+              this.time + dist(currentPos, targetSun.pos) / CONSTANTS.UNIT_SPEED;
+            this.fleets.set(newFleet.id, newFleet);
+
+            // "Terminate" the old fleet visually and logically at this point
+            // We change its target to where it is NOW, and set arrival to NOW.
+            // We mark it as 'redirected' so it doesn't fight anything.
+            fleet.targetPos = currentPos;
+            fleet.arrivalTime = this.time;
+            fleet.redirected = true;
+          }
+        }
+
+        resolveArrivals(sun, fleets) {
+          const forces = {};
+          forces[sun.owner] = (forces[sun.owner] || 0) + sun.units;
+          fleets.forEach((f) => {
             forces[f.owner] = (forces[f.owner] || 0) + f.units;
-        });
+          });
 
-        let hostilePresent = false;
-        for (const owner in forces) {
+          let combatHappened = false;
+
+          let hostilePresent = false;
+          for (const owner in forces) {
             if (parseInt(owner) !== sun.owner && forces[owner] > 0) {
-                hostilePresent = true;
-                break;
+              hostilePresent = true;
+              break;
             }
-        }
-        if (hostilePresent && sun.upgradeTimer > 0) {
-             sun.upgradeTimer = 0;
-        }
+          }
+          if (hostilePresent && sun.upgradeTimer > 0) {
+            sun.upgradeTimer = 0;
+          }
 
-        while (true) {
+          while (true) {
             const active = Object.entries(forces)
-                .filter(([owner, units]) => units > 0)
-                .map(([owner, units]) => ({ owner: parseInt(owner), units }));
+              .filter(([owner, units]) => units > 0)
+              .map(([owner, units]) => ({ owner: parseInt(owner), units }));
 
             if (active.length <= 1) break;
+
+            combatHappened = true; // Flag that a fight occurred
 
             active.sort((a, b) => b.units - a.units || a.owner - b.owner);
 
@@ -609,153 +892,188 @@ class GameEngine {
 
             forces[f1.owner] -= damage;
             forces[f2.owner] -= damage;
-        }
+          }
 
-        let winner = FACTIONS.NEUTRAL;
-        let survivors = 0;
-        for (const owner in forces) {
+          if (combatHappened) {
+            sun.addBattleEvent(this.time);
+          }
+
+          let winner = FACTIONS.NEUTRAL;
+          let survivors = 0;
+          for (const owner in forces) {
             if (forces[owner] > 0) {
-                winner = parseInt(owner);
-                survivors = forces[owner];
-                break;
+              winner = parseInt(owner);
+              survivors = forces[owner];
+              break;
             }
+          }
+
+          if (winner !== sun.owner) {
+            sun.owner = winner;
+            sun.upgradeTimer = 0;
+          }
+          sun.units = survivors;
+          sun.addCheckpoint(this.time);
         }
 
-        if (winner !== sun.owner) {
-             sun.owner = winner;
-             sun.upgradeTimer = 0;
+        recordScoreHistory() {
+          const scores = this.getCurrentScores();
+          this.scoreHistory.push({ time: this.time, scores });
         }
-        sun.units = survivors;
-        sun.addCheckpoint(this.time);
-    }
 
-    recordScoreHistory() {
-        const scores = this.getCurrentScores();
-        this.scoreHistory.push({ time: this.time, scores });
-    }
+        getCurrentScores() {
+          const scores = {};
+          this.activeFactions.forEach((fid) => (scores[fid] = 0));
 
-    getCurrentScores() {
-        const scores = {};
-        this.activeFactions.forEach(fid => scores[fid] = 0);
-        
-        this.suns.forEach(sun => {
+          this.suns.forEach((sun) => {
             if (sun.owner !== FACTIONS.NEUTRAL) {
-                 scores[sun.owner] = (scores[sun.owner] || 0) + sun.units;
+              scores[sun.owner] = (scores[sun.owner] || 0) + sun.units;
             }
-        });
-        this.fleets.forEach(fleet => {
-            scores[fleet.owner] = (scores[fleet.owner] || 0) + fleet.units;
-        });
-        return scores;
-    }
+          });
+          this.fleets.forEach((fleet) => {
+            // Count all fleets that haven't arrived, regardless of redirected status
+            // Redirected fleets (old) have 0 remaining travel time so they might be counted briefly or not
+            // But new fleet is created immediately, so score is conserved.
+            // Just skip redirected ones if they are 'processed'
+            if (!fleet.processed || !fleet.redirected) {
+              scores[fleet.owner] = (scores[fleet.owner] || 0) + fleet.units;
+            }
+          });
+          return scores;
+        }
 
-    checkWinCondition() {
-        const scores = this.getCurrentScores();
-        const playerAlive = (scores[FACTIONS.PLAYER] || 0) > 0;
-        let aiAlive = false;
-        this.aiFactions.forEach(fid => {
+        checkWinCondition() {
+          const scores = this.getCurrentScores();
+          const playerAlive = (scores[FACTIONS.PLAYER] || 0) > 0;
+          let aiAlive = false;
+          this.aiFactions.forEach((fid) => {
             if ((scores[fid] || 0) > 0) aiAlive = true;
-        });
-        
-        if (!playerAlive) return 'defeat';
-        if (playerAlive && !aiAlive) return 'victory';
-        return null;
-    }
+          });
 
-    forceGameOver(type) {
-        if (type === 'victory') {
+          if (!playerAlive) return "defeat";
+          if (playerAlive && !aiAlive) return "victory";
+          return null;
+        }
+
+        forceGameOver(type) {
+          if (type === "victory") {
             // Ensure player has at least one sun or unit to satisfy win condition
             let playerHasUnits = false;
-            this.suns.forEach(sun => { if (sun.owner === FACTIONS.PLAYER && sun.units > 0) playerHasUnits = true; });
-            this.fleets.forEach(fleet => { if (fleet.owner === FACTIONS.PLAYER) playerHasUnits = true; });
-            
+            this.suns.forEach((sun) => {
+              if (sun.owner === FACTIONS.PLAYER && sun.units > 0) playerHasUnits = true;
+            });
+            this.fleets.forEach((fleet) => {
+              if (fleet.owner === FACTIONS.PLAYER) playerHasUnits = true;
+            });
+
             if (!playerHasUnits) {
-                // Give player a home planet if they have nothing
-                const sun = this.suns.values().next().value;
-                if (sun) {
-                     sun.owner = FACTIONS.PLAYER;
-                     sun.units = 100;
-                     sun.level = 3;
-                }
+              // Give player a home planet if they have nothing
+              const sun = this.suns.values().next().value;
+              if (sun) {
+                sun.owner = FACTIONS.PLAYER;
+                sun.units = 100;
+                sun.level = 3;
+              }
             }
 
             // Eliminate AI
-            this.suns.forEach(sun => {
-                if (this.aiFactions.includes(sun.owner)) {
-                    sun.owner = FACTIONS.NEUTRAL;
-                    sun.units = 0;
-                }
+            this.suns.forEach((sun) => {
+              if (this.aiFactions.includes(sun.owner)) {
+                sun.owner = FACTIONS.NEUTRAL;
+                sun.units = 0;
+              }
             });
             for (const [id, fleet] of this.fleets.entries()) {
-                if (this.aiFactions.includes(fleet.owner)) {
-                    this.fleets.delete(id);
-                }
+              if (this.aiFactions.includes(fleet.owner)) {
+                this.fleets.delete(id);
+              }
             }
-        } else if (type === 'defeat') {
-             // Eliminate Player
-             this.suns.forEach(sun => {
-                 if (sun.owner === FACTIONS.PLAYER) {
-                     sun.owner = FACTIONS.NEUTRAL;
-                     sun.units = 0;
-                 }
-             });
-             for (const [id, fleet] of this.fleets.entries()) {
-                 if (fleet.owner === FACTIONS.PLAYER) {
-                     this.fleets.delete(id);
-                 }
-             }
+          } else if (type === "defeat") {
+            // Eliminate Player
+            this.suns.forEach((sun) => {
+              if (sun.owner === FACTIONS.PLAYER) {
+                sun.owner = FACTIONS.NEUTRAL;
+                sun.units = 0;
+              }
+            });
+            for (const [id, fleet] of this.fleets.entries()) {
+              if (fleet.owner === FACTIONS.PLAYER) {
+                this.fleets.delete(id);
+              }
+            }
+          }
         }
-    }
-}
+      }
 
-// =========================================
-// RENDERER (PIXIJS)
-// =========================================
-class GameRenderer {
-    constructor(engine, containerId) {
-        this.engine = engine;
-        this.app = new PIXI.Application({ 
-            resizeTo: window, 
-            antialias: true, 
-            backgroundColor: COLORS.BACKGROUND 
-        });
-        document.body.appendChild(this.app.view);
+      // =========================================
+      // RENDERER (PIXIJS)
+      // =========================================
+      class GameRenderer {
+        constructor(engine, containerId) {
+          this.engine = engine;
+          this.app = new PIXI.Application({
+            resizeTo: window,
+            antialias: true,
+            backgroundColor: COLORS.BACKGROUND,
+          });
+          document.body.appendChild(this.app.view);
 
-        const partGfx = new PIXI.Graphics();
-        partGfx.beginFill(0xffffff, 0.8);
-        partGfx.drawCircle(0, 0, 3);
-        partGfx.endFill();
-        this.particleTex = this.app.renderer.generateTexture(partGfx);
+          const partGfx = new PIXI.Graphics();
+          partGfx.beginFill(0xffffff, 0.8);
+          partGfx.drawCircle(0, 0, 3);
+          partGfx.endFill();
+          this.particleTex = this.app.renderer.generateTexture(partGfx);
 
-        this.world = new PIXI.Container();
-        this.app.stage.addChild(this.world);
+          // Create Glow Texture
+          const glowCanvas = document.createElement("canvas");
+          glowCanvas.width = 128;
+          glowCanvas.height = 128;
+          const gCtx = glowCanvas.getContext("2d");
+          const grad = gCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+          grad.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+          grad.addColorStop(0.4, "rgba(255, 255, 255, 0.2)");
+          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          gCtx.fillStyle = grad;
+          gCtx.fillRect(0, 0, 128, 128);
+          this.glowTex = PIXI.Texture.from(glowCanvas);
 
-        this.selectionBoxGfx = new PIXI.Graphics();
-        this.app.stage.addChild(this.selectionBoxGfx);
+          this.world = new PIXI.Container();
+          this.app.stage.addChild(this.world);
 
-        this.sunGraphics = new Map();
-        this.fleetGraphics = new Map();
-        this.cmdGraphics = new Map();
-        this.selectionRings = new PIXI.Graphics();
-        this.world.addChild(this.selectionRings);
+          this.selectionBoxGfx = new PIXI.Graphics();
+          this.app.stage.addChild(this.selectionBoxGfx);
 
-        this.camera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
-        this.targetCamera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
+          this.sunGraphics = new Map();
+          this.fleetGraphics = new Map();
+          this.cmdGraphics = new Map();
+          this.visualCommands = new Map();
+          this.explosions = []; // Active visual explosions
+          this.selectionRings = new PIXI.Graphics();
+          this.world.addChild(this.selectionRings);
 
-        this.initWorld();
+          this.camera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
+          this.targetCamera = { x: 0, y: 0, zoom: CONSTANTS.ZOOM_START };
 
-        this.minimapCanvas = document.getElementById('minimap');
-        this.minimapCtx = this.minimapCanvas.getContext('2d');
-    }
+          this.initWorld();
 
-    destroy() {
-        this.app.destroy(true, { children: true, texture: true, baseTexture: true });
-    }
+          this.minimapCanvas = document.getElementById("minimap");
+          this.minimapCtx = this.minimapCanvas.getContext("2d");
+        }
 
-    initWorld() {
-        this.engine.suns.forEach(sun => {
+        destroy() {
+          this.app.destroy(true, { children: true, texture: true, baseTexture: true });
+        }
+
+        initWorld() {
+          this.engine.suns.forEach((sun) => {
             const g = new PIXI.Container();
-            
+
+            // Glow Sprite
+            const glow = new PIXI.Sprite(this.glowTex);
+            glow.anchor.set(0.5);
+            glow.blendMode = PIXI.BLEND_MODES.ADD;
+            g.addChild(glow);
+
             const core = new PIXI.Graphics();
             g.addChild(core);
 
@@ -766,10 +1084,14 @@ class GameRenderer {
             g.addChild(swarm);
 
             const style = new PIXI.TextStyle({
-                fontFamily: 'Arial', fontSize: 14, fill: '#ffffff',
-                stroke: '#000000', strokeThickness: 4, align: 'center'
+              fontFamily: "Arial",
+              fontSize: 14,
+              fill: "#ffffff",
+              stroke: "#000000",
+              strokeThickness: 4,
+              align: "center",
             });
-            const label = new PIXI.Text('0', style);
+            const label = new PIXI.Text("0", style);
             label.anchor.set(0.5, 1);
             label.position.set(0, -20);
             g.addChild(label);
@@ -778,934 +1100,1282 @@ class GameRenderer {
             g.interactive = true;
             g.sunId = sun.id;
 
+            // Random phase offsets for animation
+            const animOffset = Math.random() * 1000;
+            const animSpeed = 0.5 + Math.random() * 0.5;
+
             this.world.addChild(g);
-            this.sunGraphics.set(sun.id, { container: g, core, rings, swarm, label, lastOwner: -1, lastLevel: -1, particles: [] });
-        });
-    }
+            this.sunGraphics.set(sun.id, {
+              container: g,
+              core,
+              glow,
+              rings,
+              swarm,
+              label,
+              lastOwner: -1,
+              lastLevel: -1,
+              particles: [],
+              animOffset,
+              animSpeed,
+              lastPerceivedTime: undefined,
+              activeFlares: [],
+            });
+          });
+        }
 
-    updateCamera(dt) {
-        this.camera.zoom = lerp(this.camera.zoom, this.targetCamera.zoom, dt * 5);
-        this.camera.x = lerp(this.camera.x, this.targetCamera.x, dt * 10);
-        this.camera.y = lerp(this.camera.y, this.targetCamera.y, dt * 10);
+        updateCamera(dt) {
+          this.camera.zoom = lerp(this.camera.zoom, this.targetCamera.zoom, dt * 5);
+          this.camera.x = lerp(this.camera.x, this.targetCamera.x, dt * 10);
+          this.camera.y = lerp(this.camera.y, this.targetCamera.y, dt * 10);
 
-        this.world.scale.set(this.camera.zoom);
-        this.world.position.set(
+          this.world.scale.set(this.camera.zoom);
+          this.world.position.set(
             this.app.screen.width / 2 - this.camera.x * this.camera.zoom,
-            this.app.screen.height / 2 - this.camera.y * this.camera.zoom
-        );
-    }
+            this.app.screen.height / 2 - this.camera.y * this.camera.zoom,
+          );
+        }
 
-    render(dt, playerSelection) {
-        const observerPos = this.engine.homeworlds[FACTIONS.PLAYER];
-        const currentTime = this.engine.time;
-        const zoom = this.camera.zoom;
+        render(dt, playerSelection, fleetSelection) {
+          const observerPos = this.engine.homeworlds[FACTIONS.PLAYER];
+          const currentTime = this.engine.time;
+          const realTime = performance.now() / 1000;
+          const zoom = this.camera.zoom;
 
-        this.engine.suns.forEach(sun => {
+          // Calculate visual dt for effects that shouldn't speed up indefinitely
+          let visualDt = dt;
+          if (CONSTANTS.GAME_SPEED > 5.0) {
+            visualDt = dt * (5.0 / CONSTANTS.GAME_SPEED);
+          }
+
+          this.engine.suns.forEach((sun) => {
             const gfx = this.sunGraphics.get(sun.id);
             const pState = sun.getPerceivedState(observerPos, currentTime);
+
+            // Handle Battle Explosions
+            const distToSun = dist(sun.pos, observerPos);
+            const delay = distToSun / CONSTANTS.LIGHT_SPEED_C;
+            const perceivedTime = Math.max(0, currentTime - delay);
+
+            if (gfx.lastPerceivedTime === undefined) gfx.lastPerceivedTime = perceivedTime;
+
+            sun.battleEvents.forEach((t) => {
+              if (t > gfx.lastPerceivedTime && t <= perceivedTime) {
+                this.spawnExplosion(sun.pos.x, sun.pos.y, (10 + sun.level * 5) * 3);
+              }
+            });
+            gfx.lastPerceivedTime = perceivedTime;
+
             const color = this.getFactionColor(pState.owner);
 
-            if (pState.owner !== gfx.lastOwner || pState.level !== gfx.lastLevel) {
-                gfx.core.clear();
-                gfx.core.beginFill(color);
-                if (pState.owner === FACTIONS.NEUTRAL) {
-                    gfx.core.drawCircle(0, 0, 8 + pState.level * 2);
-                } else {
-                    gfx.core.drawCircle(0, 0, 12 + pState.level * 3);
-                    gfx.core.lineStyle(2, color, 0.5);
-                    gfx.core.drawCircle(0, 0, 16 + pState.level * 4);
+            // Draw Star Surface (Animated)
+            gfx.core.clear();
+
+            const baseRadius =
+              pState.owner === FACTIONS.NEUTRAL ? 10 + pState.level * 2 : 14 + pState.level * 3;
+
+            // Animated surface noise
+            const time = realTime * gfx.animSpeed + gfx.animOffset;
+
+            // Glow
+            gfx.glow.tint = color;
+            const glowPulse = Math.sin(time * 2) * 0.1;
+            gfx.glow.width = baseRadius * 5 * (1 + glowPulse);
+            gfx.glow.height = baseRadius * 5 * (1 + glowPulse);
+            // Boost neutral brightness
+            gfx.glow.alpha = pState.owner === FACTIONS.NEUTRAL ? 0.8 : 0.5;
+
+            // Star Shape with Noise
+            gfx.core.beginFill(color);
+            const points = [];
+            const segments = 30;
+            for (let i = 0; i <= segments; i++) {
+              const theta = (i / segments) * Math.PI * 2;
+              // Compose sine waves for wobbly surface
+              const noise =
+                Math.sin(theta * 5 + time) * 0.5 + Math.sin(theta * 11 - time * 1.5) * 0.25;
+              const r = baseRadius + noise * 1.5;
+              points.push(Math.cos(theta) * r, Math.sin(theta) * r);
+            }
+            gfx.core.drawPolygon(points);
+            gfx.core.endFill();
+
+            // Bright Center
+            gfx.core.beginFill(0xffffff, 0.6);
+            gfx.core.drawCircle(0, 0, baseRadius * 0.6);
+            gfx.core.endFill();
+
+            // Solar Flares (Periodic and Dynamic)
+            if (pState.owner !== FACTIONS.NEUTRAL) {
+              // Spawn flares
+              if (Math.random() < 2.0 * visualDt) {
+                gfx.activeFlares.push({
+                  angle: Math.random() * Math.PI * 2,
+                  duration: 0.4 + Math.random() * 0.6,
+                  life: 0,
+                  heightScale: 0.1 + Math.random() * 0.2,
+                  width: 0.3 + Math.random() * 0.3,
+                });
+              }
+
+              // Update and Draw
+              for (let k = gfx.activeFlares.length - 1; k >= 0; k--) {
+                const f = gfx.activeFlares[k];
+                f.life += visualDt;
+                if (f.life >= f.duration) {
+                  gfx.activeFlares.splice(k, 1);
+                  continue;
                 }
-                gfx.core.endFill();
-                gfx.lastOwner = pState.owner;
-                gfx.lastLevel = pState.level;
+
+                const t = f.life / f.duration;
+                const intensity = Math.sin(t * Math.PI);
+                const h = baseRadius * f.heightScale * intensity;
+
+                gfx.core.lineStyle(2, color, 0.7 * intensity);
+
+                const a1 = f.angle - f.width / 2;
+                const a2 = f.angle + f.width / 2;
+
+                // Control Point
+                const cpR = baseRadius + h * 3.5;
+                const cpX = Math.cos(f.angle) * cpR;
+                const cpY = Math.sin(f.angle) * cpR;
+
+                gfx.core.moveTo(Math.cos(a1) * baseRadius, Math.sin(a1) * baseRadius);
+                gfx.core.quadraticCurveTo(
+                  cpX,
+                  cpY,
+                  Math.cos(a2) * baseRadius,
+                  Math.sin(a2) * baseRadius,
+                );
+              }
+              gfx.core.lineStyle(0);
             }
 
             if (pState.upgrading) {
-                 gfx.rings.clear();
-                 gfx.rings.lineStyle(3, 0xffff00, 0.7 + Math.sin(currentTime * 10) * 0.3);
-                 gfx.rings.drawCircle(0, 0, 25 + pState.level * 5);
+              gfx.rings.clear();
+              gfx.rings.lineStyle(3, 0xffff00, 0.7 + Math.sin(currentTime * 10) * 0.3);
+              gfx.rings.drawCircle(0, 0, baseRadius * 1.8);
             } else {
-                 gfx.rings.clear();
+              gfx.rings.clear();
             }
 
             const swarmCount = Math.min(Math.floor(pState.units / 2), 50);
             while (gfx.particles.length < swarmCount) {
-                const p = new PIXI.Sprite(this.particleTex);
-                p.anchor.set(0.5);
-                p.scale.set(0.3 + Math.random() * 0.4);
-                p.orbitRadius = 20 + Math.random() * 20 + pState.level * 3;
-                p.orbitSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5);
-                p.orbitOffset = Math.random() * Math.PI * 2;
-                p.anglePos = Math.random() * Math.PI * 2;
-                p.blendMode = PIXI.BLEND_MODES.ADD;
-                gfx.swarm.addChild(p);
-                gfx.particles.push(p);
+              const p = new PIXI.Sprite(this.particleTex);
+              p.anchor.set(0.5);
+              p.scale.set(0.3 + Math.random() * 0.4);
+              p.orbitRadius = baseRadius * 1.5 + Math.random() * 20;
+              p.orbitSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5);
+              p.orbitOffset = Math.random() * Math.PI * 2;
+              p.anglePos = Math.random() * Math.PI * 2;
+              p.blendMode = PIXI.BLEND_MODES.ADD;
+              gfx.swarm.addChild(p);
+              gfx.particles.push(p);
             }
             while (gfx.particles.length > swarmCount) {
-                const p = gfx.particles.pop();
-                gfx.swarm.removeChild(p);
-                p.destroy();
+              const p = gfx.particles.pop();
+              gfx.swarm.removeChild(p);
+              p.destroy();
             }
-            gfx.particles.forEach(p => {
-                p.tint = color;
-                p.anglePos += p.orbitSpeed * dt;
-                p.x = Math.cos(p.anglePos) * p.orbitRadius;
-                p.y = Math.sin(p.anglePos) * p.orbitRadius * 0.6;
-                p.alpha = 0.5 + Math.sin(p.anglePos + currentTime) * 0.3;
+            gfx.particles.forEach((p) => {
+              p.tint = color;
+              p.anglePos += p.orbitSpeed * dt;
+              p.x = Math.cos(p.anglePos) * p.orbitRadius;
+              p.y = Math.sin(p.anglePos) * p.orbitRadius * 0.6;
+              p.alpha = 0.5 + Math.sin(p.anglePos + currentTime) * 0.3;
             });
 
             gfx.label.text = Math.floor(pState.units).toString();
             gfx.label.scale.set(Math.max(1 / zoom, 0.5));
             gfx.label.visible = zoom > 0.3;
-        });
+          });
 
-        this.selectionRings.clear();
-        this.selectionRings.lineStyle(3 / zoom, COLORS.SELECTION, 0.8);
-        playerSelection.forEach(sunId => {
+          // Update Explosions
+          this.updateExplosions(dt);
+
+          this.selectionRings.clear();
+
+          // Draw Sun Selection
+          this.selectionRings.lineStyle(3 / zoom, COLORS.SELECTION, 0.8);
+          playerSelection.forEach((sunId) => {
             const sun = this.engine.suns.get(sunId);
-            this.selectionRings.drawCircle(sun.pos.x, sun.pos.y, 35 + sun.level*5);
-        });
+            const pState = sun.getPerceivedState(observerPos, currentTime);
+            const baseRadius =
+              pState.owner === FACTIONS.NEUTRAL ? 10 + pState.level * 2 : 14 + pState.level * 3;
+            this.selectionRings.drawCircle(sun.pos.x, sun.pos.y, baseRadius * 2.2);
+          });
 
-        const activeFleetIds = new Set();
-        this.engine.fleets.forEach(fleet => {
+          // Draw Fleet Selection
+          this.selectionRings.lineStyle(2 / zoom, COLORS.SELECTION, 0.8);
+          fleetSelection.forEach((fleetId) => {
+            const fleet = this.engine.fleets.get(fleetId);
+            if (fleet) {
+              const targetSun = this.engine.suns.get(fleet.targetSunId);
+              const pPos = fleet.getPerceivedPos(
+                observerPos,
+                currentTime,
+                targetSun ? targetSun.pos : null,
+              );
+              if (pPos) {
+                this.selectionRings.drawCircle(pPos.x, pPos.y, 18);
+              }
+            }
+          });
+
+          const activeFleetIds = new Set();
+          this.engine.fleets.forEach((fleet) => {
             const targetSun = this.engine.suns.get(fleet.targetSunId);
             const pPos = fleet.getPerceivedPos(observerPos, currentTime, targetSun.pos);
-            
+
             if (pPos) {
-                activeFleetIds.add(fleet.id);
-                let gfx = this.fleetGraphics.get(fleet.id);
-                if (!gfx) {
-                    gfx = this.createFleetGfx(fleet.owner);
-                    this.world.addChild(gfx.container);
-                    this.fleetGraphics.set(fleet.id, gfx);
+              activeFleetIds.add(fleet.id);
+              let gfx = this.fleetGraphics.get(fleet.id);
+              if (!gfx) {
+                gfx = this.createFleetGfx(fleet.owner);
+                this.world.addChild(gfx.container);
+                this.fleetGraphics.set(fleet.id, gfx);
+              }
+
+              gfx.container.position.set(pPos.x, pPos.y);
+              gfx.label.text = fleet.units.toString();
+              gfx.label.scale.set(Math.max(1 / zoom, 0.5));
+
+              const visualCount = Math.min(Math.floor(fleet.units), 80);
+              while (gfx.particles.length < visualCount) {
+                let p = gfx.pool.pop();
+                if (!p) {
+                  p = new PIXI.Sprite(this.particleTex);
+                  p.anchor.set(0.5);
+                  p.blendMode = PIXI.BLEND_MODES.ADD;
                 }
+                p.scale.set(0.2 + Math.random() * 0.3);
+                p.alpha = Math.random();
+                p.x = (Math.random() - 0.5) * 10;
+                p.y = (Math.random() - 0.5) * 10;
+                p.vx = (Math.random() - 0.5) * 10;
+                p.vy = (Math.random() - 0.5) * 10;
+                gfx.swarm.addChild(p);
+                gfx.particles.push(p);
+              }
+              while (gfx.particles.length > visualCount) {
+                const p = gfx.particles.pop();
+                gfx.swarm.removeChild(p);
+                gfx.pool.push(p);
+              }
 
-                gfx.container.position.set(pPos.x, pPos.y);
-                gfx.label.text = fleet.units.toString();
-                gfx.label.scale.set(Math.max(1 / zoom, 0.5));
+              const dx = fleet.targetPos ? fleet.targetPos.x - fleet.sourcePos.x : 0;
+              const dy = fleet.targetPos ? fleet.targetPos.y - fleet.sourcePos.y : 0;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              const ndx = dx / len;
+              const ndy = dy / len;
 
-                const visualCount = Math.min(Math.floor(fleet.units), 80);
-                while (gfx.particles.length < visualCount) {
-                    let p = gfx.pool.pop();
-                    if (!p) {
-                        p = new PIXI.Sprite(this.particleTex);
-                        p.anchor.set(0.5);
-                        p.blendMode = PIXI.BLEND_MODES.ADD;
-                    }
-                    p.scale.set(0.2 + Math.random() * 0.3);
-                    p.alpha = Math.random();
-                    p.x = (Math.random() - 0.5) * 10;
-                    p.y = (Math.random() - 0.5) * 10;
-                    p.vx = (Math.random() - 0.5) * 10;
-                    p.vy = (Math.random() - 0.5) * 10;
-                    gfx.swarm.addChild(p);
-                    gfx.particles.push(p);
+              const color = gfx.color;
+              gfx.particles.forEach((p) => {
+                p.tint = color;
+                p.x -= ndx * 15 * dt;
+                p.y -= ndy * 15 * dt;
+
+                p.x += (Math.random() - 0.5) * 2;
+                p.y += (Math.random() - 0.5) * 2;
+
+                if (dist({ x: 0, y: 0 }, { x: p.x, y: p.y }) > 15) {
+                  p.x = (Math.random() - 0.5) * 10;
+                  p.y = (Math.random() - 0.5) * 10;
+                  p.alpha = 1;
                 }
-                while (gfx.particles.length > visualCount) {
-                    const p = gfx.particles.pop();
-                    gfx.swarm.removeChild(p);
-                    gfx.pool.push(p);
-                }
-
-                const dx = fleet.targetPos ? fleet.targetPos.x - fleet.sourcePos.x : 0;
-                const dy = fleet.targetPos ? fleet.targetPos.y - fleet.sourcePos.y : 0;
-                const len = Math.sqrt(dx*dx + dy*dy) || 1;
-                const ndx = dx / len;
-                const ndy = dy / len;
-
-                const color = gfx.color;
-                gfx.particles.forEach(p => {
-                    p.tint = color;
-                    p.x -= ndx * 15 * dt;
-                    p.y -= ndy * 15 * dt;
-                    
-                    p.x += (Math.random() - 0.5) * 2;
-                    p.y += (Math.random() - 0.5) * 2;
-                    
-                    if (dist({x:0, y:0}, {x:p.x, y:p.y}) > 15) {
-                        p.x = (Math.random() - 0.5) * 10;
-                        p.y = (Math.random() - 0.5) * 10;
-                        p.alpha = 1;
-                    }
-                    p.alpha *= 0.95;
-                });
+                p.alpha *= 0.95;
+              });
             }
-        });
-        for (const [id, gfx] of this.fleetGraphics.entries()) {
+          });
+          for (const [id, gfx] of this.fleetGraphics.entries()) {
             if (!activeFleetIds.has(id)) {
-                this.world.removeChild(gfx.container);
-                this.fleetGraphics.delete(id);
+              this.world.removeChild(gfx.container);
+              this.fleetGraphics.delete(id);
             }
-        }
+          }
 
-        const activeCmdIds = new Set();
-        this.engine.commands.forEach(cmd => {
-            if (cmd.owner !== FACTIONS.PLAYER) return;
+          // Update Command Visualization
+          this.engine.commands.forEach((cmd) => {
+            if (cmd.owner === FACTIONS.PLAYER && !this.visualCommands.has(cmd.id)) {
+              const distToObserver = dist(cmd.targetPos, observerPos);
+              const returnDelay = distToObserver / CONSTANTS.LIGHT_SPEED_C;
+              const travelTime = cmd.arrivalTime - cmd.issueTime;
 
-            const travelDuration = dist(cmd.startPos, cmd.targetPos) / CONSTANTS.LIGHT_SPEED_C;
-            const elapsed = currentTime - cmd.issueTime;
-            if (elapsed >= 0 && elapsed < travelDuration) {
-                const t = elapsed / travelDuration;
-                const pPos = lerpPos(cmd.startPos, cmd.targetPos, t);
-
-                activeCmdIds.add(cmd.id);
-                let gfx = this.cmdGraphics.get(cmd.id);
-                if (!gfx) {
-                    gfx = new PIXI.Graphics();
-                    gfx.beginFill(COLORS.SELECTION);
-                    gfx.drawCircle(0,0,3);
-                    gfx.endFill();
-                    this.world.addChild(gfx);
-                    this.cmdGraphics.set(cmd.id, gfx);
-                }
-                gfx.position.set(pPos.x, pPos.y);
+              this.visualCommands.set(cmd.id, {
+                startPos: { ...cmd.startPos },
+                targetPos: { ...cmd.targetPos },
+                issueTime: cmd.issueTime,
+                duration: travelTime + returnDelay,
+                color: COLORS.SELECTION,
+              });
             }
-        });
-        for (const [id, gfx] of this.cmdGraphics.entries()) {
+          });
+
+          const activeCmdIds = new Set();
+          this.visualCommands.forEach((vCmd, id) => {
+            const elapsed = currentTime - vCmd.issueTime;
+            if (elapsed >= 0 && elapsed < vCmd.duration) {
+              activeCmdIds.add(id);
+
+              let gfx = this.cmdGraphics.get(id);
+              if (!gfx) {
+                gfx = new PIXI.Graphics();
+                gfx.beginFill(vCmd.color);
+                gfx.drawCircle(0, 0, 3);
+                gfx.endFill();
+                this.world.addChild(gfx);
+                this.cmdGraphics.set(id, gfx);
+              }
+
+              const t = elapsed / vCmd.duration;
+              const pPos = lerpPos(vCmd.startPos, vCmd.targetPos, t);
+              gfx.position.set(pPos.x, pPos.y);
+            }
+          });
+
+          for (const [id, gfx] of this.cmdGraphics.entries()) {
             if (!activeCmdIds.has(id)) {
-                this.world.removeChild(gfx);
-                this.cmdGraphics.delete(id);
+              this.world.removeChild(gfx);
+              this.cmdGraphics.delete(id);
+              this.visualCommands.delete(id);
             }
+          }
         }
-    }
 
-    createFleetGfx(owner) {
-        const container = new PIXI.Container();
-        const color = this.getFactionColor(owner);
-        
-        const swarm = new PIXI.Container();
-        container.addChild(swarm);
+        spawnExplosion(x, y, size) {
+          const gfx = new PIXI.Graphics();
+          gfx.x = x;
+          gfx.y = y;
+          gfx.blendMode = PIXI.BLEND_MODES.ADD;
+          this.world.addChild(gfx);
+          this.explosions.push({ gfx, time: 0, duration: 0.6, size });
+        }
 
-        const style = new PIXI.TextStyle({
-            fontFamily: 'Arial', fontSize: 12, fill: color,
-            stroke: '#000000', strokeThickness: 3, align: 'center'
-        });
-        const label = new PIXI.Text('0', style);
-        label.anchor.set(0.5, 1);
-        label.position.set(0, -10);
-        container.addChild(label);
+        updateExplosions(dt) {
+          // Limit explosion speed to equivalent of 5x game speed
+          let explosionDt = dt;
+          if (CONSTANTS.GAME_SPEED > 5.0) {
+            explosionDt = dt * (5.0 / CONSTANTS.GAME_SPEED);
+          }
 
-        return { container, swarm, label, color, particles: [], pool: [] };
-    }
+          for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const ex = this.explosions[i];
+            ex.time += explosionDt;
+            if (ex.time >= ex.duration) {
+              this.world.removeChild(ex.gfx);
+              ex.gfx.destroy();
+              this.explosions.splice(i, 1);
+            } else {
+              const t = ex.time / ex.duration;
+              const r = ex.size * Math.sin((t * Math.PI) / 2);
+              const alpha = 1 - t;
+              ex.gfx.clear();
 
-    getFactionColor(factionId) {
-        if (factionId === FACTIONS.PLAYER) return COLORS.PLAYER;
-        if (factionId === FACTIONS.NEUTRAL) return COLORS.NEUTRAL;
-        
-        const idx = factionId - FACTIONS.AI_START;
-        const aiColors = [
-            0xef4444, 0x22c55e, 0xa855f7, 0xf97316, 0xeab308, 
-            0x06b6d4, 0xec4899, 0x6366f1, 0x14b8a6, 0xf43f5e, 
-            0x84cc16, 0x8b5cf6
-        ];
-        if (idx >= 0 && idx < aiColors.length) return aiColors[idx];
-        
-        const hue = (idx * 137.508) % 360;
-        return this.hslToHex(hue, 70, 60);
-    }
+              // Flash core
+              ex.gfx.beginFill(0xffffff, alpha * 0.8);
+              ex.gfx.drawCircle(0, 0, r * 0.5);
+              ex.gfx.endFill();
 
-    hslToHex(h, s, l) {
-        l /= 100;
-        const a = s * Math.min(l, 1 - l) / 100;
-        const f = n => {
+              // Shockwave
+              ex.gfx.lineStyle(2 + 4 * (1 - t), 0xffaa00, alpha);
+              ex.gfx.drawCircle(0, 0, r);
+            }
+          }
+        }
+
+        createFleetGfx(owner) {
+          const container = new PIXI.Container();
+          const color = this.getFactionColor(owner);
+
+          const swarm = new PIXI.Container();
+          container.addChild(swarm);
+
+          const style = new PIXI.TextStyle({
+            fontFamily: "Arial",
+            fontSize: 12,
+            fill: color,
+            stroke: "#000000",
+            strokeThickness: 3,
+            align: "center",
+          });
+          const label = new PIXI.Text("0", style);
+          label.anchor.set(0.5, 1);
+          label.position.set(0, -10);
+          container.addChild(label);
+
+          return { container, swarm, label, color, particles: [], pool: [] };
+        }
+
+        getFactionColor(factionId) {
+          if (factionId === FACTIONS.PLAYER) return COLORS.PLAYER;
+          if (factionId === FACTIONS.NEUTRAL) return COLORS.NEUTRAL;
+
+          const idx = factionId - FACTIONS.AI_START;
+          const aiColors = [
+            0xef4444, 0x22c55e, 0xa855f7, 0xf97316, 0xeab308, 0x06b6d4, 0xec4899, 0x6366f1,
+            0x14b8a6, 0xf43f5e, 0x84cc16, 0x8b5cf6,
+          ];
+          if (idx >= 0 && idx < aiColors.length) return aiColors[idx];
+
+          const hue = (idx * 137.508) % 360;
+          return this.hslToHex(hue, 70, 60);
+        }
+
+        hslToHex(h, s, l) {
+          l /= 100;
+          const a = (s * Math.min(l, 1 - l)) / 100;
+          const f = (n) => {
             const k = (n + h / 30) % 12;
             const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-            return Math.round(255 * color).toString(16).padStart(2, '0');
-        };
-        return parseInt(`0x${f(0)}${f(8)}${f(4)}`);
-    }
+            return Math.round(255 * color)
+              .toString(16)
+              .padStart(2, "0");
+          };
+          return parseInt(`0x${f(0)}${f(8)}${f(4)}`);
+        }
 
-    renderMinimap(observerPos, currentTime) {
-        const ctx = this.minimapCtx;
-        const w = this.minimapCanvas.width;
-        const h = this.minimapCanvas.height;
-        
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
+        renderMinimap(observerPos, currentTime) {
+          const ctx = this.minimapCtx;
+          const w = this.minimapCanvas.width;
+          const h = this.minimapCanvas.height;
 
-        const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
-        const offsetX = w / 2;
-        const offsetY = h / 2;
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, w, h);
 
-        this.engine.suns.forEach(sun => {
+          const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
+          const offsetX = w / 2;
+          const offsetY = h / 2;
+
+          this.engine.suns.forEach((sun) => {
             const pState = sun.getPerceivedState(observerPos, currentTime);
-            const color = '#' + this.getFactionColor(pState.owner).toString(16).padStart(6, '0');
-            
+            const color = "#" + this.getFactionColor(pState.owner).toString(16).padStart(6, "0");
+
             ctx.fillStyle = color;
             const mx = sun.pos.x * scale + offsetX;
             const my = sun.pos.y * scale + offsetY;
             const size = pState.owner === FACTIONS.NEUTRAL ? 2 : 4;
             ctx.beginPath();
-            ctx.arc(mx, my, size, 0, Math.PI*2);
+            ctx.arc(mx, my, size, 0, Math.PI * 2);
             ctx.fill();
-        });
+          });
 
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        const viewW = (this.app.screen.width / this.camera.zoom) * scale;
-        const viewH = (this.app.screen.height / this.camera.zoom) * scale;
-        ctx.strokeRect(
-            (this.camera.x * scale + offsetX) - viewW/2,
-            (this.camera.y * scale + offsetY) - viewH/2,
-            viewW, viewH
-        );
-    }
-}
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1;
+          const viewW = (this.app.screen.width / this.camera.zoom) * scale;
+          const viewH = (this.app.screen.height / this.camera.zoom) * scale;
+          ctx.strokeRect(
+            this.camera.x * scale + offsetX - viewW / 2,
+            this.camera.y * scale + offsetY - viewH / 2,
+            viewW,
+            viewH,
+          );
+        }
+      }
 
-// =========================================
-// AI CONTROLLER
-// =========================================
-class AIController {
-    constructor(engine, factionId) {
-        this.engine = engine;
-        this.factionId = factionId;
-        this.timer = 5 + random() * 5;
-    }
+      // =========================================
+      // AI CONTROLLER
+      // =========================================
+      class AIController {
+        constructor(engine, factionId) {
+          this.engine = engine;
+          this.factionId = factionId;
+          this.timer = 5 + random() * 5;
+        }
 
-    update(dt) {
-        this.timer -= dt;
-        if (this.timer <= 0) {
+        update(dt) {
+          this.timer -= dt;
+          if (this.timer <= 0) {
             this.timer = 3 + random() * 4;
             this.think();
+          }
         }
-    }
 
-    think() {
-        const hwPos = this.engine.homeworlds[this.factionId];
-        const now = this.engine.time;
+        think() {
+          const hwPos = this.engine.homeworlds[this.factionId];
+          const now = this.engine.time;
 
-        const mySuns = [];
-        const potentialTargets = [];
+          const mySuns = [];
+          const potentialTargets = [];
 
-        this.engine.suns.forEach(sun => {
+          this.engine.suns.forEach((sun) => {
             const pState = sun.getPerceivedState(hwPos, now);
             if (pState.owner === this.factionId) {
-                mySuns.push({ sun, pState });
+              mySuns.push({ sun, pState });
             } else {
-                potentialTargets.push({ sun, pState });
+              potentialTargets.push({ sun, pState });
             }
-        });
+          });
 
-        if (mySuns.length === 0) return;
+          if (mySuns.length === 0) return;
 
-        mySuns.forEach(source => {
-            if (source.pState.units > SUN_LEVELS[source.pState.level].cost * 1.5 && source.pState.level < 3) {
-                 this.engine.issueUpgrade(this.factionId, source.sun.id);
-                 return;
+          mySuns.forEach((source) => {
+            if (
+              source.pState.units > SUN_LEVELS[source.pState.level].cost * 1.5 &&
+              source.pState.level < 3
+            ) {
+              this.engine.issueUpgrade(this.factionId, source.sun.id);
+              return;
             }
 
             if (source.pState.units > 30) {
-                let bestTarget = null;
-                let bestScore = -Infinity;
+              let bestTarget = null;
+              let bestScore = -Infinity;
 
-                potentialTargets.forEach(target => {
-                    const d = dist(source.sun.pos, target.sun.pos);
-                    if (d > 800) return;
+              potentialTargets.forEach((target) => {
+                const d = dist(source.sun.pos, target.sun.pos);
+                if (d > 800) return;
 
-                    let score = -d;
-                    if (target.pState.owner === FACTIONS.NEUTRAL) score += 500;
-                    score -= target.pState.units * 10;
+                let score = -d;
+                if (target.pState.owner === FACTIONS.NEUTRAL) score += 500;
+                score -= target.pState.units * 10;
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestTarget = target.sun;
-                    }
-                });
-
-                if (bestTarget && source.pState.units > bestTarget.getPerceivedState(hwPos, now).units * 1.2 + 10) {
-                    this.engine.issueAttack(this.factionId, [source.sun.id], bestTarget.id, 0.6);
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestTarget = target.sun;
                 }
+              });
+
+              if (
+                bestTarget &&
+                source.pState.units > bestTarget.getPerceivedState(hwPos, now).units * 1.2 + 10
+              ) {
+                this.engine.issueAttack(this.factionId, [source.sun.id], bestTarget.id, 0.6);
+              }
             }
+          });
+        }
+      }
+
+      // =========================================
+      // MAIN GAME CONTROLLER
+      // =========================================
+      let engine, renderer, aiControllers;
+      let gameState = "MENU"; // MENU, PLAYING, ENDED, OBSERVING, PAUSED
+      let lastGameState = "PLAYING";
+      let gameOverCheckTimer = 0;
+
+      // Player State
+      let selectedSunIds = new Set();
+      let selectedFleetIds = new Set();
+      let isSelecting = false;
+      let isPanning = false;
+      let selectStart = { x: 0, y: 0 };
+      let lastMousePos = { x: 0, y: 0 };
+      let mouseDownTime = 0;
+      let panStartPos = { x: 0, y: 0 };
+      let currentMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+      function startGame() {
+        document.getElementById("title-screen").classList.add("hidden");
+        document.getElementById("ui-layer").classList.remove("hidden");
+        document.getElementById("game-over-screen").classList.add("hidden");
+        document.getElementById("pause-menu-screen").classList.add("hidden");
+
+        const starsSliderVal = parseFloat(document.getElementById("opt-stars").value);
+        const numStars = Math.round(20 + Math.pow(starsSliderVal / 100, 2) * 980);
+        const numAI = parseInt(document.getElementById("opt-ai").value);
+
+        const speedSliderVal = parseFloat(document.getElementById("opt-speed").value);
+        const speed = 0.1 * Math.pow(500, speedSliderVal / 100);
+
+        CONSTANTS.NUM_SUNS = numStars;
+        CONSTANTS.GAME_SPEED = speed;
+
+        engine = new GameEngine();
+        engine.init(numAI);
+
+        if (renderer) {
+          renderer.destroy();
+          renderer = null;
+        }
+        renderer = new GameRenderer(engine, "game-canvas");
+
+        aiControllers = [];
+        engine.aiFactions.forEach((fid) => {
+          aiControllers.push(new AIController(engine, fid));
         });
-    }
-}
 
-// =========================================
-// MAIN GAME CONTROLLER
-// =========================================
-let engine, renderer, aiControllers;
-let gameState = 'MENU'; // MENU, PLAYING, ENDED, OBSERVING, PAUSED
-let lastGameState = 'PLAYING';
-let gameOverCheckTimer = 0;
+        const pHome = engine.homeworlds[FACTIONS.PLAYER];
+        renderer.camera.x = renderer.targetCamera.x = pHome.x;
+        renderer.camera.y = renderer.targetCamera.y = pHome.y;
 
-// Player State
-let selectedSunIds = new Set();
-let isSelecting = false;
-let isPanning = false;
-let selectStart = { x: 0, y: 0 };
-let lastMousePos = { x: 0, y: 0 };
-let mouseDownTime = 0;
-let panStartPos = { x: 0, y: 0 };
-let currentMousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        // Input Handling Setup
+        renderer.app.stage.hitArea = renderer.app.screen;
+        renderer.app.stage.interactive = true;
 
-function startGame() {
-    document.getElementById('title-screen').classList.add('hidden');
-    document.getElementById('ui-layer').classList.remove('hidden');
-    document.getElementById('game-over-screen').classList.add('hidden');
-    document.getElementById('pause-menu-screen').classList.add('hidden');
+        renderer.app.stage.on("pointerdown", (e) => {
+          const global = { x: e.global.x, y: e.global.y };
 
-    const starsSliderVal = parseFloat(document.getElementById('opt-stars').value);
-    const numStars = Math.round(20 + Math.pow(starsSliderVal / 100, 2) * 980);
-    const numAI = parseInt(document.getElementById('opt-ai').value);
-    
-    const speedSliderVal = parseFloat(document.getElementById('opt-speed').value);
-    const speed = 0.1 * Math.pow(500, speedSliderVal / 100);
-
-    CONSTANTS.NUM_SUNS = numStars;
-    CONSTANTS.GAME_SPEED = speed;
-
-    engine = new GameEngine();
-    engine.init(numAI);
-
-    if (renderer) {
-        renderer.destroy();
-        renderer = null;
-    }
-    renderer = new GameRenderer(engine, 'game-canvas');
-    
-    aiControllers = [];
-    engine.aiFactions.forEach(fid => {
-        aiControllers.push(new AIController(engine, fid));
-    });
-
-    const pHome = engine.homeworlds[FACTIONS.PLAYER];
-    renderer.camera.x = renderer.targetCamera.x = pHome.x;
-    renderer.camera.y = renderer.targetCamera.y = pHome.y;
-
-    // Input Handling Setup
-    renderer.app.stage.hitArea = renderer.app.screen;
-    renderer.app.stage.interactive = true;
-
-    renderer.app.stage.on('pointerdown', (e) => {
-        const global = { x: e.global.x, y: e.global.y };
-        
-        if (e.data.button === 0) { // Left Click
+          if (e.data.button === 0) {
+            // Left Click
             isSelecting = true;
             isPanning = false;
             selectStart = { ...global };
             renderer.selectionBoxGfx.clear();
             mouseDownTime = Date.now();
-        } else if (e.data.button === 1 || e.data.button === 2) { // Middle or Right Click
+          } else if (e.data.button === 1 || e.data.button === 2) {
+            // Middle or Right Click
             isPanning = true;
             isSelecting = false;
             lastMousePos = { ...global };
             panStartPos = { ...global };
-        }
-    });
+          }
+        });
 
-    renderer.app.stage.on('pointermove', (e) => {
-        const global = { x: e.global.x, y: e.global.y };
-        currentMousePos = { ...global };
+        renderer.app.stage.on("pointermove", (e) => {
+          const global = { x: e.global.x, y: e.global.y };
+          currentMousePos = { ...global };
 
-        if (isSelecting) {
+          if (isSelecting) {
             const width = global.x - selectStart.x;
             const height = global.y - selectStart.y;
             if (Math.abs(width) > 2 || Math.abs(height) > 2) {
-                renderer.selectionBoxGfx.clear();
-                renderer.selectionBoxGfx.lineStyle(1, 0x3b82f6, 0.8);
-                renderer.selectionBoxGfx.beginFill(0x3b82f6, 0.2);
-                renderer.selectionBoxGfx.drawRect(Math.min(selectStart.x, global.x), Math.min(selectStart.y, global.y), Math.abs(width), Math.abs(height));
-                renderer.selectionBoxGfx.endFill();
+              renderer.selectionBoxGfx.clear();
+              renderer.selectionBoxGfx.lineStyle(1, 0x3b82f6, 0.8);
+              renderer.selectionBoxGfx.beginFill(0x3b82f6, 0.2);
+              renderer.selectionBoxGfx.drawRect(
+                Math.min(selectStart.x, global.x),
+                Math.min(selectStart.y, global.y),
+                Math.abs(width),
+                Math.abs(height),
+              );
+              renderer.selectionBoxGfx.endFill();
             }
-        } else if (isPanning) {
+          } else if (isPanning) {
             renderer.targetCamera.x -= (global.x - lastMousePos.x) / renderer.camera.zoom;
             renderer.targetCamera.y -= (global.y - lastMousePos.y) / renderer.camera.zoom;
             lastMousePos = { ...global };
-        }
-    });
+          }
+        });
 
-    renderer.app.stage.on('pointerup', (e) => {
-        const global = { x: e.global.x, y: e.global.y };
+        renderer.app.stage.on("pointerup", (e) => {
+          const global = { x: e.global.x, y: e.global.y };
+          const observerPos = engine.homeworlds[FACTIONS.PLAYER];
 
-        if (e.data.button === 0) { // Left button released
+          if (e.data.button === 0) {
+            // Left button released
             if (isSelecting) {
-                const width = global.x - selectStart.x;
-                const height = global.y - selectStart.y;
-                const dragDist = Math.sqrt(width*width + height*height);
-                
-                if (dragDist < 5) {
-                    const worldPos = renderer.world.toLocal(global);
-                    let clickedSun = null;
-                    for (const sun of engine.suns.values()) {
-                        if (dist(worldPos, sun.pos) < sun.radius + 20) {
-                            clickedSun = sun;
-                            break;
-                        }
-                    }
-                    if (clickedSun) {
-                        if (clickedSun.owner === FACTIONS.PLAYER) {
-                            if (e.data.originalEvent.shiftKey) {
-                                if (selectedSunIds.has(clickedSun.id)) {
-                                    selectedSunIds.delete(clickedSun.id);
-                                } else {
-                                    selectedSunIds.add(clickedSun.id);
-                                }
-                            } else {
-                                selectedSunIds.clear();
-                                selectedSunIds.add(clickedSun.id);
-                            }
-                        } else {
-                            if (selectedSunIds.size > 0) {
-                                engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), clickedSun.id, 0.5);
-                            }
-                        }
-                    } else {
-                         selectedSunIds.clear();
-                    }
-                } else {
-                    const startWorld = renderer.world.toLocal(selectStart);
-                    const endWorld = renderer.world.toLocal(global);
-                    const minX = Math.min(startWorld.x, endWorld.x);
-                    const maxX = Math.max(startWorld.x, endWorld.x);
-                    const minY = Math.min(startWorld.y, endWorld.y);
-                    const maxY = Math.max(startWorld.y, endWorld.y);
+              const width = global.x - selectStart.x;
+              const height = global.y - selectStart.y;
+              const dragDist = Math.sqrt(width * width + height * height);
 
-                    if (!e.data.originalEvent.shiftKey) selectedSunIds.clear();
+              let sunsFound = false;
 
-                    for (const sun of engine.suns.values()) {
-                         if (sun.owner === FACTIONS.PLAYER) {
-                             if (sun.pos.x >= minX && sun.pos.x <= maxX && sun.pos.y >= minY && sun.pos.y <= maxY) {
-                                 selectedSunIds.add(sun.id);
-                             }
-                         }
-                    }
+              // Handle Sun Selection
+              if (dragDist < 5) {
+                // Click Selection
+                const worldPos = renderer.world.toLocal(global);
+                let clickedSun = null;
+                for (const sun of engine.suns.values()) {
+                  if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                    clickedSun = sun;
+                    break;
+                  }
                 }
+
+                if (clickedSun) {
+                  if (clickedSun.owner === FACTIONS.PLAYER) {
+                    if (e.data.originalEvent.shiftKey) {
+                      if (selectedSunIds.has(clickedSun.id)) {
+                        selectedSunIds.delete(clickedSun.id);
+                      } else {
+                        selectedSunIds.add(clickedSun.id);
+                      }
+                    } else {
+                      selectedSunIds.clear();
+                      selectedSunIds.add(clickedSun.id);
+                    }
+                    selectedFleetIds.clear(); // Deselect fleets if sun selected
+                  } else {
+                    // Clicked enemy/neutral sun
+                    if (selectedSunIds.size > 0) {
+                      engine.issueAttack(
+                        FACTIONS.PLAYER,
+                        Array.from(selectedSunIds),
+                        clickedSun.id,
+                        0.5,
+                      );
+                    } else if (selectedFleetIds.size > 0) {
+                      engine.issueRedirect(
+                        FACTIONS.PLAYER,
+                        Array.from(selectedFleetIds),
+                        clickedSun.id,
+                      );
+                    }
+                  }
+                  sunsFound = true;
+                } else {
+                  // Clicked empty space
+                  if (!e.data.originalEvent.shiftKey) {
+                    selectedSunIds.clear();
+                    // Don't clear fleets yet, check if we clicked a fleet
+                  }
+                }
+              } else {
+                // Box Selection
+                const startWorld = renderer.world.toLocal(selectStart);
+                const endWorld = renderer.world.toLocal(global);
+                const minX = Math.min(startWorld.x, endWorld.x);
+                const maxX = Math.max(startWorld.x, endWorld.x);
+                const minY = Math.min(startWorld.y, endWorld.y);
+                const maxY = Math.max(startWorld.y, endWorld.y);
+
+                if (!e.data.originalEvent.shiftKey) selectedSunIds.clear();
+
+                for (const sun of engine.suns.values()) {
+                  if (sun.owner === FACTIONS.PLAYER) {
+                    if (
+                      sun.pos.x >= minX &&
+                      sun.pos.x <= maxX &&
+                      sun.pos.y >= minY &&
+                      sun.pos.y <= maxY
+                    ) {
+                      selectedSunIds.add(sun.id);
+                      sunsFound = true;
+                    }
+                  }
+                }
+
+                // If we selected suns, clear fleet selection
+                if (sunsFound && !e.data.originalEvent.shiftKey) {
+                  selectedFleetIds.clear();
+                }
+              }
+
+              // Handle Fleet Selection (if no suns selected or Shift pressed)
+              if (!sunsFound) {
+                if (!e.data.originalEvent.shiftKey) selectedFleetIds.clear();
+
+                const selectionRect =
+                  dragDist >= 5
+                    ? {
+                        minX: Math.min(
+                          renderer.world.toLocal(selectStart).x,
+                          renderer.world.toLocal(global).x,
+                        ),
+                        maxX: Math.max(
+                          renderer.world.toLocal(selectStart).x,
+                          renderer.world.toLocal(global).x,
+                        ),
+                        minY: Math.min(
+                          renderer.world.toLocal(selectStart).y,
+                          renderer.world.toLocal(global).y,
+                        ),
+                        maxY: Math.max(
+                          renderer.world.toLocal(selectStart).y,
+                          renderer.world.toLocal(global).y,
+                        ),
+                      }
+                    : null;
+
+                const clickPos = dragDist < 5 ? renderer.world.toLocal(global) : null;
+                const clickRadius = 30 / renderer.camera.zoom;
+
+                engine.fleets.forEach((fleet) => {
+                  if (fleet.owner !== FACTIONS.PLAYER) return;
+                  if (fleet.processed) return;
+
+                  const targetSun = engine.suns.get(fleet.targetSunId);
+                  const pPos = fleet.getPerceivedPos(
+                    observerPos,
+                    engine.time,
+                    targetSun ? targetSun.pos : null,
+                  );
+
+                  if (pPos) {
+                    if (selectionRect) {
+                      if (
+                        pPos.x >= selectionRect.minX &&
+                        pPos.x <= selectionRect.maxX &&
+                        pPos.y >= selectionRect.minY &&
+                        pPos.y <= selectionRect.maxY
+                      ) {
+                        selectedFleetIds.add(fleet.id);
+                      }
+                    } else if (clickPos) {
+                      if (dist(clickPos, pPos) < clickRadius) {
+                        selectedFleetIds.add(fleet.id);
+                      }
+                    }
+                  }
+                });
+              }
             }
             isSelecting = false;
             renderer.selectionBoxGfx.clear();
-        } else if (e.data.button === 1) { 
+          } else if (e.data.button === 1) {
             isPanning = false;
-        } else if (e.data.button === 2) { 
+          } else if (e.data.button === 2) {
             if (isPanning) {
-                if (dist(panStartPos, global) < 5) {
-                    const worldPos = renderer.world.toLocal(global);
-                    let clickedSun = null;
-                    for (const sun of engine.suns.values()) {
-                        if (dist(worldPos, sun.pos) < sun.radius + 20) {
-                            clickedSun = sun;
-                            break;
-                        }
-                    }
-                    if (clickedSun && selectedSunIds.size > 0) {
-                        engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), clickedSun.id, 0.5);
-                    }
+              // Right Click Action (if not dragged much)
+              if (dist(panStartPos, global) < 5) {
+                const worldPos = renderer.world.toLocal(global);
+                let clickedSun = null;
+                for (const sun of engine.suns.values()) {
+                  if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                    clickedSun = sun;
+                    break;
+                  }
                 }
-                isPanning = false;
-            }
-        }
-        mouseDownTime = 0;
-    });
 
-    renderer.app.stage.on('pointertap', (e) => {
-         if (e.data.button !== 0) return;
-         const now = Date.now();
-         if (now - lastClickTime < 300) {
+                if (clickedSun) {
+                  if (selectedSunIds.size > 0) {
+                    engine.issueAttack(
+                      FACTIONS.PLAYER,
+                      Array.from(selectedSunIds),
+                      clickedSun.id,
+                      0.5,
+                    );
+                  } else if (selectedFleetIds.size > 0) {
+                    engine.issueRedirect(
+                      FACTIONS.PLAYER,
+                      Array.from(selectedFleetIds),
+                      clickedSun.id,
+                    );
+                    // Provide visual feedback
+                    selectedFleetIds.clear();
+                  }
+                }
+              }
+              isPanning = false;
+            }
+          }
+          mouseDownTime = 0;
+        });
+
+        renderer.app.stage.on("pointertap", (e) => {
+          // Handled in pointerup for better drag differentiation,
+          // but double click needs logic here or simulated.
+          // Double click for 100% attack is tricky with this setup,
+          // but existing code used pointertap.
+          // Let's keep it simple: pointerup handles single clicks well.
+          // For double click logic (Attack 100%), we can check time.
+          if (e.data.button !== 0) return;
+          const now = Date.now();
+          if (now - lastClickTime < 300) {
+            // Double Click Logic
             const worldPos = renderer.world.toLocal(e.global);
             for (const sun of engine.suns.values()) {
-                if (dist(worldPos, sun.pos) < sun.radius + 20) {
-                    if (sun.owner !== FACTIONS.PLAYER && selectedSunIds.size > 0) {
-                         engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), sun.id, 1.0);
-                    }
-                    break;
+              if (dist(worldPos, sun.pos) < sun.radius + 20) {
+                if (sun.owner !== FACTIONS.PLAYER && selectedSunIds.size > 0) {
+                  engine.issueAttack(FACTIONS.PLAYER, Array.from(selectedSunIds), sun.id, 1.0);
                 }
+                break;
+              }
             }
-         }
-         lastClickTime = now;
-    });
+          }
+          lastClickTime = now;
+        });
 
-    window.addEventListener('wheel', (e) => {
-        const zoomFactor = 1.1;
-        if (e.deltaY < 0) renderer.targetCamera.zoom *= zoomFactor;
-        else renderer.targetCamera.zoom /= zoomFactor;
-        renderer.targetCamera.zoom = Math.max(CONSTANTS.MIN_ZOOM, Math.min(CONSTANTS.MAX_ZOOM, renderer.targetCamera.zoom));
-    });
+        window.addEventListener("wheel", (e) => {
+          const zoomFactor = 1.1;
+          if (e.deltaY < 0) renderer.targetCamera.zoom *= zoomFactor;
+          else renderer.targetCamera.zoom /= zoomFactor;
+          renderer.targetCamera.zoom = Math.max(
+            CONSTANTS.MIN_ZOOM,
+            Math.min(CONSTANTS.MAX_ZOOM, renderer.targetCamera.zoom),
+          );
+        });
 
-    renderer.minimapCanvas.addEventListener('pointerdown', (e) => {
-        const rect = renderer.minimapCanvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        
-        const w = renderer.minimapCanvas.width;
-        const h = renderer.minimapCanvas.height;
-        const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
-        
-        renderer.targetCamera.x = (mx - w/2) / scale;
-        renderer.targetCamera.y = (my - h/2) / scale;
-    });
+        renderer.minimapCanvas.addEventListener("pointerdown", (e) => {
+          const rect = renderer.minimapCanvas.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
 
-    gameState = 'PLAYING';
-    gameOverCheckTimer = 0;
-    lastTime = performance.now();
-    gameLoop();
-}
+          const w = renderer.minimapCanvas.width;
+          const h = renderer.minimapCanvas.height;
+          const scale = w / (CONSTANTS.GALAXY_WIDTH * 1.2);
 
-// Start button listener
-document.getElementById('start-btn').addEventListener('click', startGame);
-document.getElementById('restart-btn').addEventListener('click', () => {
-    hideGameOver();
-    startGame();
-});
-document.getElementById('menu-btn').addEventListener('click', () => {
-    hideGameOver();
-    document.getElementById('title-screen').classList.remove('hidden');
-    document.getElementById('ui-layer').classList.add('hidden');
-    gameState = 'MENU';
-    if (renderer) {
-        renderer.destroy();
-        renderer = null;
-    }
-});
-document.getElementById('continue-btn').addEventListener('click', () => {
-    hideGameOver();
-    gameState = 'OBSERVING';
-});
+          renderer.targetCamera.x = (mx - w / 2) / scale;
+          renderer.targetCamera.y = (my - h / 2) / scale;
+        });
 
-// Pause Menu Buttons Listeners
-document.getElementById('pause-resume-btn').addEventListener('click', () => {
-    togglePauseMenu();
-});
-document.getElementById('pause-restart-btn').addEventListener('click', () => {
-    document.getElementById('pause-menu-screen').classList.add('hidden');
-    startGame();
-});
-document.getElementById('pause-menu-btn').addEventListener('click', () => {
-    document.getElementById('pause-menu-screen').classList.add('hidden');
-    document.getElementById('title-screen').classList.remove('hidden');
-    document.getElementById('ui-layer').classList.add('hidden');
-    gameState = 'MENU';
-    if (renderer) {
-        renderer.destroy();
-        renderer = null;
-    }
-});
+        gameState = "PLAYING";
+        gameOverCheckTimer = 0;
+        lastTime = performance.now();
+        gameLoop();
+      }
 
-// Debug Buttons Listeners
-document.getElementById('debug-win').addEventListener('click', () => {
-    engine.forceGameOver('victory');
-});
-document.getElementById('debug-lose').addEventListener('click', () => {
-    engine.forceGameOver('defeat');
-});
+      // Start button listener
+      document.getElementById("start-btn").addEventListener("click", startGame);
+      document.getElementById("restart-btn").addEventListener("click", () => {
+        hideGameOver();
+        startGame();
+      });
+      document.getElementById("menu-btn").addEventListener("click", () => {
+        hideGameOver();
+        document.getElementById("title-screen").classList.remove("hidden");
+        document.getElementById("ui-layer").classList.add("hidden");
+        gameState = "MENU";
+        if (renderer) {
+          renderer.destroy();
+          renderer = null;
+        }
+      });
+      document.getElementById("continue-btn").addEventListener("click", () => {
+        hideGameOver();
+        gameState = "OBSERVING";
+      });
 
-let speedIndicatorTimeout = null;
-function showSpeedIndicator() {
-    const el = document.getElementById('speed-indicator');
-    el.textContent = `Speed: ${CONSTANTS.GAME_SPEED.toFixed(1)}x`;
-    el.classList.remove('opacity-0');
-    if (speedIndicatorTimeout) clearTimeout(speedIndicatorTimeout);
-    speedIndicatorTimeout = setTimeout(() => {
-        el.classList.add('opacity-0');
-        speedIndicatorTimeout = null;
-    }, 1500);
-}
+      // Pause Menu Buttons Listeners
+      document.getElementById("pause-resume-btn").addEventListener("click", () => {
+        togglePauseMenu();
+      });
+      document.getElementById("pause-restart-btn").addEventListener("click", () => {
+        document.getElementById("pause-menu-screen").classList.add("hidden");
+        startGame();
+      });
+      document.getElementById("pause-menu-btn").addEventListener("click", () => {
+        document.getElementById("pause-menu-screen").classList.add("hidden");
+        document.getElementById("title-screen").classList.remove("hidden");
+        document.getElementById("ui-layer").classList.add("hidden");
+        gameState = "MENU";
+        if (renderer) {
+          renderer.destroy();
+          renderer = null;
+        }
+      });
 
-function showGameOver(isWin) {
-    gameState = 'ENDED';
-    const screen = document.getElementById('game-over-screen');
-    const title = document.getElementById('game-over-title');
-    const contBtn = document.getElementById('continue-btn');
-    
-    title.textContent = isWin ? 'VICTORY' : 'DEFEAT';
-    title.className = 'text-6xl font-bold uppercase tracking-widest mb-8 ' + (isWin ? 'text-blue-400' : 'text-red-500');
-    
-    if (isWin) {
-        contBtn.classList.add('hidden');
-    } else {
-        contBtn.classList.remove('hidden');
-    }
-    
-    screen.classList.remove('hidden');
-    drawScoreGraph('score-graph');
-}
+      // Debug Buttons Listeners
+      document.getElementById("debug-win").addEventListener("click", () => {
+        engine.forceGameOver("victory");
+      });
+      document.getElementById("debug-lose").addEventListener("click", () => {
+        engine.forceGameOver("defeat");
+      });
 
-function hideGameOver() {
-    document.getElementById('game-over-screen').classList.add('hidden');
-}
+      let speedIndicatorTimeout = null;
+      function showSpeedIndicator() {
+        const el = document.getElementById("speed-indicator");
+        el.textContent = `Speed: ${CONSTANTS.GAME_SPEED.toFixed(1)}x`;
+        el.classList.remove("opacity-0");
+        if (speedIndicatorTimeout) clearTimeout(speedIndicatorTimeout);
+        speedIndicatorTimeout = setTimeout(() => {
+          el.classList.add("opacity-0");
+          speedIndicatorTimeout = null;
+        }, 1500);
+      }
 
-function togglePauseMenu() {
-    const pauseScreen = document.getElementById('pause-menu-screen');
-    if (gameState === 'PAUSED') {
-        pauseScreen.classList.add('hidden');
-        gameState = lastGameState;
-    } else {
-        lastGameState = gameState;
-        gameState = 'PAUSED';
-        pauseScreen.classList.remove('hidden');
-        drawScoreGraph('pause-score-graph');
-    }
-}
+      function showGameOver(isWin) {
+        gameState = "ENDED";
+        const screen = document.getElementById("game-over-screen");
+        const title = document.getElementById("game-over-title");
+        const contBtn = document.getElementById("continue-btn");
 
-let graphHoverData = { canvasId: null, x: 0, y: 0, active: false };
+        title.textContent = isWin ? "VICTORY" : "DEFEAT";
+        title.className =
+          "text-6xl font-bold uppercase tracking-widest mb-8 " +
+          (isWin ? "text-blue-400" : "text-red-500");
 
-function drawScoreGraph(canvasId) {
-    const cvs = document.getElementById(canvasId);
-    const ctx = cvs.getContext('2d');
-    const w = cvs.width;
-    const h = cvs.height;
-    
-    ctx.fillStyle = '#080808';
-    ctx.fillRect(0, 0, w, h);
-    
-    const history = engine.scoreHistory;
-    if (!history || history.length === 0) return;
-    
-    const maxTime = history[history.length - 1].time;
-    let maxScore = 100;
-    history.forEach(entry => {
-        Object.values(entry.scores).forEach(s => maxScore = Math.max(maxScore, s));
-    });
-    maxScore *= 1.1; 
-    
-    const padding = 50;
-    const graphW = w - padding * 2;
-    const graphH = h - padding * 2;
-    
-    // Draw axes
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, h - padding);
-    ctx.lineTo(w - padding, h - padding);
-    ctx.stroke();
-    
-    const factions = Array.from(engine.activeFactions);
-    const isHovering = graphHoverData.canvasId === canvasId && graphHoverData.active;
-    let closestPoint = null;
-    let minDistance = 30;
+        if (isWin) {
+          contBtn.classList.add("hidden");
+        } else {
+          contBtn.classList.remove("hidden");
+        }
 
-    factions.forEach(fid => {
-        const colorInt = renderer.getFactionColor(fid);
-        const color = '#' + colorInt.toString(16).padStart(6, '0');
-        const isPlayer = fid === FACTIONS.PLAYER;
-        
-        ctx.strokeStyle = color;
-        ctx.lineWidth = isPlayer ? 4 : 2;
+        screen.classList.remove("hidden");
+        drawScoreGraph("score-graph");
+      }
+
+      function hideGameOver() {
+        document.getElementById("game-over-screen").classList.add("hidden");
+      }
+
+      function togglePauseMenu() {
+        const pauseScreen = document.getElementById("pause-menu-screen");
+        if (gameState === "PAUSED") {
+          pauseScreen.classList.add("hidden");
+          gameState = lastGameState;
+        } else {
+          lastGameState = gameState;
+          gameState = "PAUSED";
+          pauseScreen.classList.remove("hidden");
+          drawScoreGraph("pause-score-graph");
+        }
+      }
+
+      let graphHoverData = { canvasId: null, x: 0, y: 0, active: false };
+
+      function drawScoreGraph(canvasId) {
+        const cvs = document.getElementById(canvasId);
+        const ctx = cvs.getContext("2d");
+        const w = cvs.width;
+        const h = cvs.height;
+
+        ctx.fillStyle = "#080808";
+        ctx.fillRect(0, 0, w, h);
+
+        const history = engine.scoreHistory;
+        if (!history || history.length === 0) return;
+
+        const maxTime = history[history.length - 1].time;
+        let maxScore = 100;
+        history.forEach((entry) => {
+          Object.values(entry.scores).forEach((s) => (maxScore = Math.max(maxScore, s)));
+        });
+        maxScore *= 1.1;
+
+        const padding = 50;
+        const graphW = w - padding * 2;
+        const graphH = h - padding * 2;
+
+        // Draw axes
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        
-        history.forEach((entry, i) => {
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, h - padding);
+        ctx.lineTo(w - padding, h - padding);
+        ctx.stroke();
+
+        const factions = Array.from(engine.activeFactions);
+        const isHovering = graphHoverData.canvasId === canvasId && graphHoverData.active;
+        let closestPoint = null;
+        let minDistance = 30;
+
+        factions.forEach((fid) => {
+          const colorInt = renderer.getFactionColor(fid);
+          const color = "#" + colorInt.toString(16).padStart(6, "0");
+          const isPlayer = fid === FACTIONS.PLAYER;
+
+          ctx.strokeStyle = color;
+          ctx.lineWidth = isPlayer ? 4 : 2;
+          ctx.beginPath();
+
+          history.forEach((entry, i) => {
             const x = padding + (entry.time / maxTime) * graphW;
             const s = entry.scores[fid] || 0;
-            const y = (h - padding) - (s / maxScore) * graphH;
+            const y = h - padding - (s / maxScore) * graphH;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
 
             if (isHovering) {
-                const dx = x - graphHoverData.x;
-                const dy = y - graphHoverData.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closestPoint = { x, y, score: s, fid, color, time: entry.time };
-                }
+              const dx = x - graphHoverData.x;
+              const dy = y - graphHoverData.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestPoint = { x, y, score: s, fid, color, time: entry.time };
+              }
             }
+          });
+          ctx.stroke();
         });
-        ctx.stroke();
-    });
-    
-    if (closestPoint) {
-        ctx.fillStyle = '#080808';
-        ctx.strokeStyle = closestPoint.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(closestPoint.x, closestPoint.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
 
-        const factionName = closestPoint.fid === FACTIONS.PLAYER ? 'Player' : `AI ${closestPoint.fid - FACTIONS.AI_START + 1}`;
-        const tooltipText = `${factionName}: ${Math.floor(closestPoint.score)}`;
-        ctx.font = '14px sans-serif';
-        const textWidth = ctx.measureText(tooltipText).width;
-        const tipX = Math.min(Math.max(closestPoint.x - textWidth/2, padding), w - padding - textWidth);
-        const tipY = Math.max(closestPoint.y - 15, padding + 20);
+        if (closestPoint) {
+          ctx.fillStyle = "#080808";
+          ctx.strokeStyle = closestPoint.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(closestPoint.x, closestPoint.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
 
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillRect(tipX - 5, tipY - 15, textWidth + 10, 20);
-        ctx.fillStyle = closestPoint.color;
-        ctx.fillText(tooltipText, tipX, tipY);
-    }
+          const factionName =
+            closestPoint.fid === FACTIONS.PLAYER
+              ? "Player"
+              : `AI ${closestPoint.fid - FACTIONS.AI_START + 1}`;
+          const tooltipText = `${factionName}: ${Math.floor(closestPoint.score)}`;
+          ctx.font = "14px sans-serif";
+          const textWidth = ctx.measureText(tooltipText).width;
+          const tipX = Math.min(
+            Math.max(closestPoint.x - textWidth / 2, padding),
+            w - padding - textWidth,
+          );
+          const tipY = Math.max(closestPoint.y - 15, padding + 20);
 
-    ctx.fillStyle = '#666';
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Time', w/2, h - 15);
-    ctx.save();
-    ctx.translate(20, h/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillText('Score', 0, 0);
-    ctx.restore();
-    
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(maxScore), padding - 10, padding + 10);
-    ctx.fillText('0', padding - 10, h - padding);
-}
+          ctx.fillStyle = "rgba(0,0,0,0.8)";
+          ctx.fillRect(tipX - 5, tipY - 15, textWidth + 10, 20);
+          ctx.fillStyle = closestPoint.color;
+          ctx.fillText(tooltipText, tipX, tipY);
+        }
 
-// Track keys including 'U' for upgrade, 'F' for fullscreen
-const keys = {};
-window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    if (gameState === 'PLAYING' || gameState === 'OBSERVING') {
-        if (e.code === 'KeyU') {
-            selectedSunIds.forEach(sunId => {
-                const sun = engine.suns.get(sunId);
-                if (sun && sun.owner === FACTIONS.PLAYER) {
-                    engine.issueUpgrade(FACTIONS.PLAYER, sunId);
-                }
+        ctx.fillStyle = "#666";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Time", w / 2, h - 15);
+        ctx.save();
+        ctx.translate(20, h / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText("Score", 0, 0);
+        ctx.restore();
+
+        ctx.textAlign = "right";
+        ctx.fillText(Math.round(maxScore), padding - 10, padding + 10);
+        ctx.fillText("0", padding - 10, h - padding);
+      }
+
+      // Track keys including 'U' for upgrade, 'F' for fullscreen
+      const keys = {};
+      window.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        if (gameState === "PLAYING" || gameState === "OBSERVING") {
+          if (e.code === "KeyU") {
+            selectedSunIds.forEach((sunId) => {
+              const sun = engine.suns.get(sunId);
+              if (sun && sun.owner === FACTIONS.PLAYER) {
+                engine.issueUpgrade(FACTIONS.PLAYER, sunId);
+              }
             });
+          }
         }
-    }
-    if (e.code === 'KeyF') {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => console.log(err));
-        } else {
+        if (e.code === "KeyF") {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((err) => console.log(err));
+          } else {
             document.exitFullscreen();
+          }
         }
-    }
-    if (e.code === 'KeyH') {
-        document.getElementById('help-panel').classList.toggle('hidden');
-    }
-    if (e.code === 'KeyL') {
-        document.getElementById('leaderboard').classList.toggle('hidden');
-    }
-    if (e.code === 'KeyM') {
-        if (gameState === 'PLAYING' || gameState === 'OBSERVING' || gameState === 'PAUSED') {
+        if (e.code === "KeyH") {
+          document.getElementById("help-panel").classList.toggle("hidden");
+        }
+        if (e.code === "KeyL") {
+          document.getElementById("leaderboard").classList.toggle("hidden");
+        }
+        if (e.code === "KeyM") {
+          if (gameState === "PLAYING" || gameState === "OBSERVING" || gameState === "PAUSED") {
             togglePauseMenu();
+          }
         }
-    }
-    if (e.shiftKey && e.code === 'KeyD') {
-        document.getElementById('debug-menu').classList.toggle('hidden');
-    }
-    if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
-        let step = CONSTANTS.GAME_SPEED < 1.0 ? 0.1 : 0.5;
-        CONSTANTS.GAME_SPEED = Math.min(10.0, Math.round((CONSTANTS.GAME_SPEED + step) * 10) / 10);
-        showSpeedIndicator();
-    }
-    if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
-        let step = CONSTANTS.GAME_SPEED <= 1.0 ? 0.1 : 0.5;
-        CONSTANTS.GAME_SPEED = Math.max(0.1, Math.round((CONSTANTS.GAME_SPEED - step) * 10) / 10);
-        showSpeedIndicator();
-    }
-});
-window.addEventListener('keyup', (e) => keys[e.code] = false);
+        if (e.shiftKey && e.code === "KeyD") {
+          document.getElementById("debug-menu").classList.toggle("hidden");
+        }
+        if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
+          let step = CONSTANTS.GAME_SPEED < 1.0 ? 0.1 : 0.5;
+          CONSTANTS.GAME_SPEED = Math.min(
+            10.0,
+            Math.round((CONSTANTS.GAME_SPEED + step) * 10) / 10,
+          );
+          showSpeedIndicator();
+        }
+        if (e.key === "-" || e.key === "_" || e.code === "NumpadSubtract") {
+          let step = CONSTANTS.GAME_SPEED <= 1.0 ? 0.1 : 0.5;
+          CONSTANTS.GAME_SPEED = Math.max(0.1, Math.round((CONSTANTS.GAME_SPEED - step) * 10) / 10);
+          showSpeedIndicator();
+        }
+      });
+      window.addEventListener("keyup", (e) => (keys[e.code] = false));
 
-function setupGraphInteractions() {
-    ['score-graph', 'pause-score-graph'].forEach(id => {
-        const cvs = document.getElementById(id);
-        cvs.addEventListener('mousemove', (e) => {
+      function setupGraphInteractions() {
+        ["score-graph", "pause-score-graph"].forEach((id) => {
+          const cvs = document.getElementById(id);
+          cvs.addEventListener("mousemove", (e) => {
             const rect = cvs.getBoundingClientRect();
             const scaleX = cvs.width / rect.width;
             const scaleY = cvs.height / rect.height;
             graphHoverData = {
-                canvasId: id,
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY,
-                active: true
+              canvasId: id,
+              x: (e.clientX - rect.left) * scaleX,
+              y: (e.clientY - rect.top) * scaleY,
+              active: true,
             };
             requestAnimationFrame(() => drawScoreGraph(id));
-        });
-        cvs.addEventListener('mouseleave', () => {
+          });
+          cvs.addEventListener("mouseleave", () => {
             graphHoverData.active = false;
             requestAnimationFrame(() => drawScoreGraph(id));
+          });
         });
-    });
-}
+      }
 
-// =========================================
-// GAME LOOP
-// =========================================
-let lastTime = performance.now();
-let lastClickTime = 0;
-let leaderboardUpdateTimer = 0;
+      // =========================================
+      // GAME LOOP
+      // =========================================
+      let lastTime = performance.now();
+      let lastClickTime = 0;
+      let leaderboardUpdateTimer = 0;
 
-function updateLeaderboard(dt) {
-    leaderboardUpdateTimer -= dt;
-    if (leaderboardUpdateTimer > 0) return;
-    leaderboardUpdateTimer = 0.5;
+      function updateLeaderboard(dt) {
+        leaderboardUpdateTimer -= dt;
+        if (leaderboardUpdateTimer > 0) return;
+        leaderboardUpdateTimer = 0.5;
 
-    const scores = engine.getCurrentScores();
-    const sorted = Object.entries(scores)
-        .map(([fid, score]) => ({ fid: parseInt(fid), score }))
-        .sort((a, b) => b.score - a.score);
-        
-    const list = document.getElementById('leaderboard-list');
-    list.innerHTML = '';
-    
-    sorted.forEach(entry => {
-        const isEliminated = entry.score < 1;
-        const color = renderer.getFactionColor(entry.fid);
-        const hexColor = '#' + color.toString(16).padStart(6, '0');
-        const name = entry.fid === FACTIONS.PLAYER ? 'Player' : `AI ${entry.fid - FACTIONS.AI_START + 1}`;
-        
-        const li = document.createElement('li');
-        li.className = `flex justify-between items-center`;
-        li.style.color = isEliminated ? '#666' : hexColor;
-        
-        const left = document.createElement('span');
-        left.textContent = name + (isEliminated ? ' <eliminated>' : '');
-        li.appendChild(left);
-        
-        const right = document.createElement('span');
-        right.textContent = Math.floor(entry.score).toLocaleString();
-        li.appendChild(right);
-        
-        list.appendChild(li);
-    });
-}
+        const scores = engine.getCurrentScores();
+        const sorted = Object.entries(scores)
+          .map(([fid, score]) => ({ fid: parseInt(fid), score }))
+          .sort((a, b) => b.score - a.score);
 
-function gameLoop() {
-    requestAnimationFrame(gameLoop);
-    if (gameState === 'MENU' || gameState === 'ENDED') return;
+        const list = document.getElementById("leaderboard-list");
+        list.innerHTML = "";
 
-    const now = performance.now();
-    let realDt = Math.min((now - lastTime) / 1000, 0.1); 
-    let dt = realDt; // Copy for game logic updates
-    lastTime = now;
+        sorted.forEach((entry) => {
+          const isEliminated = entry.score < 1;
+          const color = renderer.getFactionColor(entry.fid);
+          const hexColor = "#" + color.toString(16).padStart(6, "0");
+          const name =
+            entry.fid === FACTIONS.PLAYER ? "Player" : `AI ${entry.fid - FACTIONS.AI_START + 1}`;
 
-    if (gameState === 'PAUSED') {
-        return;
-    }
+          const li = document.createElement("li");
+          li.className = `flex justify-between items-center`;
+          li.style.color = isEliminated ? "#666" : hexColor;
 
-    // Apply speed modifier for simulation time
-    dt *= CONSTANTS.GAME_SPEED;
+          const left = document.createElement("span");
+          left.textContent = name + (isEliminated ? " <eliminated>" : "");
+          li.appendChild(left);
 
-    const panSpeed = (800 / renderer.camera.zoom) * realDt;
-    if (keys['KeyW'] || keys['ArrowUp']) renderer.targetCamera.y -= panSpeed;
-    if (keys['KeyS'] || keys['ArrowDown']) renderer.targetCamera.y += panSpeed;
-    if (keys['KeyA'] || keys['ArrowLeft']) renderer.targetCamera.x -= panSpeed;
-    if (keys['KeyD'] || keys['ArrowRight']) renderer.targetCamera.x += panSpeed;
+          const right = document.createElement("span");
+          right.textContent = Math.floor(entry.score).toLocaleString();
+          li.appendChild(right);
 
-    if (document.fullscreenElement) {
-        const edgeThreshold = 15;
-        if (currentMousePos.x < edgeThreshold) renderer.targetCamera.x -= panSpeed;
-        if (currentMousePos.x > window.innerWidth - edgeThreshold) renderer.targetCamera.x += panSpeed;
-        if (currentMousePos.y < edgeThreshold) renderer.targetCamera.y -= panSpeed;
-        if (currentMousePos.y > window.innerHeight - edgeThreshold) renderer.targetCamera.y += panSpeed;
-    }
+          list.appendChild(li);
+        });
+      }
 
-    engine.update(dt);
-    aiControllers.forEach(ai => ai.update(dt));
+      function gameLoop() {
+        requestAnimationFrame(gameLoop);
+        if (gameState === "MENU" || gameState === "ENDED") return;
 
-    renderer.updateCamera(realDt);
-    renderer.render(dt, selectedSunIds);
-    renderer.renderMinimap(engine.homeworlds[FACTIONS.PLAYER], engine.time);
-    
-    updateLeaderboard(realDt);
+        const now = performance.now();
+        let realDt = Math.min((now - lastTime) / 1000, 0.1);
+        let dt = realDt; // Copy for game logic updates
+        lastTime = now;
 
-    if (gameState === 'PLAYING' && engine.time > 5.0) {
-        gameOverCheckTimer += realDt;
-        if (gameOverCheckTimer >= 1.0) {
+        if (gameState === "PAUSED") {
+          return;
+        }
+
+        // Apply speed modifier for simulation time
+        dt *= CONSTANTS.GAME_SPEED;
+
+        const panSpeed = (800 / renderer.camera.zoom) * realDt;
+        if (keys["KeyW"] || keys["ArrowUp"]) renderer.targetCamera.y -= panSpeed;
+        if (keys["KeyS"] || keys["ArrowDown"]) renderer.targetCamera.y += panSpeed;
+        if (keys["KeyA"] || keys["ArrowLeft"]) renderer.targetCamera.x -= panSpeed;
+        if (keys["KeyD"] || keys["ArrowRight"]) renderer.targetCamera.x += panSpeed;
+
+        if (document.fullscreenElement) {
+          const edgeThreshold = 15;
+          if (currentMousePos.x < edgeThreshold) renderer.targetCamera.x -= panSpeed;
+          if (currentMousePos.x > window.innerWidth - edgeThreshold)
+            renderer.targetCamera.x += panSpeed;
+          if (currentMousePos.y < edgeThreshold) renderer.targetCamera.y -= panSpeed;
+          if (currentMousePos.y > window.innerHeight - edgeThreshold)
+            renderer.targetCamera.y += panSpeed;
+        }
+
+        engine.update(dt);
+        aiControllers.forEach((ai) => ai.update(dt));
+
+        renderer.updateCamera(realDt);
+        renderer.render(dt, selectedSunIds, selectedFleetIds);
+        renderer.renderMinimap(engine.homeworlds[FACTIONS.PLAYER], engine.time);
+
+        updateLeaderboard(realDt);
+
+        if (gameState === "PLAYING" && engine.time > 5.0) {
+          gameOverCheckTimer += realDt;
+          if (gameOverCheckTimer >= 1.0) {
             gameOverCheckTimer = 0;
             const winState = engine.checkWinCondition();
             if (winState) {
-                showGameOver(winState === 'victory');
+              showGameOver(winState === "victory");
             }
+          }
         }
-    }
-}
+      }
 
-// Initialize graph interaction handlers
-setupGraphInteractions();
-
-</script>
-</body>
+      // Initialize graph interaction handlers
+      setupGraphInteractions();
+    </script>
+  </body>
 </html>

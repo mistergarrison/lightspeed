@@ -1,391 +1,265 @@
-# Light Speed - Game Implementation Prompt
+# Light Speed — Design & Requirements
 
-You are to implement a single-file HTML5 real-time strategy game called **"Light
-Speed"**. The game explores the concept of the speed of light as a strategic
-constraint: players command an empire where information and orders travel at a
-finite speed. You see the universe as it *was*, not as it *is*.
+A single-file HTML5 real-time strategy game built on one idea: **information travels at a finite speed, so you command your empire from inside a delay.** You never see the galaxy as it is — only as it *was* when the light left. Orders you give now arrive later. Good play means reasoning about that gap and using it against an opponent who is reasoning about it too.
 
-**Tech Stack:**
+This document specifies the behavior the game must have and the numbers that define its balance and feel. It is deliberately quiet about *how* to build any of it. Where a mechanism is genuinely load-bearing (the perceived-time rule, deterministic simulation, combat resolution) it is stated precisely. Everything else — data structures, rendering technique, event plumbing, class layout, exact iteration counts — is the implementer's call. A short list of those open choices appears at the end.
 
-*   **HTML5/JS:** Single file, ES6+ features allowed.
-*   **Rendering:**
-    [PixiJS v7.3.2](https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js)
-    (via CDN).
-*   **Styling:** [Tailwind CSS](https://cdn.tailwindcss.com) (via CDN) for UI
-    overlays.
-*   **Minimap & Graphs:** Native HTML5 `<canvas>` 2D context.
+**Constraints**
 
---------------------------------------------------------------------------------
+- One self-contained HTML file. ES6+ is fine.
+- Rendering via PixiJS 7.3.2 (CDN). UI overlays via Tailwind (CDN). Minimap and graphs via the native 2D canvas.
+- No build step, no server requirement for single-player.
 
-## **I. Core Concept: The Light Speed Delay (LSD)**
+---
 
-The game engine must maintain two distinct states:
+## 1. The light-speed model
 
-1.  **True State:** The actual, real-time state of the galaxy (unit counts,
-    fleet positions, ownership). This updates immediately in the game loop.
-2.  **Perceived State:** What the player (and AI factions) see, based on the
-    time it takes for light to travel from an event to their **Homeworld**.
+The engine keeps one authoritative **true state** — real positions, unit counts, and ownership, advanced by the simulation. Every observer (you and each AI) sees a **perceived state** derived from it, lagged by the light travel time from each event to that observer's home:
 
-**The Golden Rule:**
+> perceived time at a point = current time − distance(point, observer's home) / C
 
-> `Perceived Time = Current Time - (Distance to Observer's Homeworld / Speed of
-> Light)`
+Two consequences define the whole game:
 
-*   **Visuals:** The player *only* sees the Perceived State.
-*   **Commands:** Orders issued by the player travel from the Homeworld to the
-    target at the speed of light. They only take effect once they "arrive" in
-    the True State.
+- **You see the past.** A sun or fleet is rendered using its state at the perceived time for your home. Distant things are more stale than near ones. The same event looks different to two players whose capitals sit at different distances.
+- **Your orders take time to arrive.** A command travels from your capital to where it needs to act, at speed C, and only changes the true state when it gets there. You are always acting on old information and your reaction is always late.
 
---------------------------------------------------------------------------------
+Both directions of delay are required. A build that lags the *visuals* but lets orders apply instantly (or vice versa) has missed the point.
 
-## **II. Game Entities & Mechanics**
+Reconstructing perceived state means each sun must expose its state at an arbitrary past time. Keep enough history per sun to cover the worst-case galaxy-wide delay, and reconstruct intermediate moments by carrying production forward from the most recent checkpoint at or before the requested time. The buffer size, checkpoint cadence, and interpolation details are yours to choose; the requirement is that perceived reconstruction is correct back to the maximum possible delay.
 
-### **1. Suns (Stars)**
+---
 
-Suns are the production nodes.
+## 2. Determinism (load-bearing)
 
-*   **Attributes:** `id`, `pos` (x,y), `owner` (Faction ID), `level` (0-4),
-    `units` (float), `upgradeTimer`.
+The simulation advances in **fixed time steps** and all randomness derives from a single seed. This is not a stylistic preference — replay and multiplayer both depend on it, so it constrains the whole engine:
 
-*   **History Buffer:** To render the Perceived State correctly, every Sun must
-    maintain a history of its state.
+- The only consumers of randomness are **map generation** and **AI decisions**. Combat, production, movement, and command resolution are fully deterministic.
+- Every command, from the player *and* from every AI, flows through one path and is recorded in a single ordered log with its issue and arrival times.
+- No wall-clock time, `Math.random`, iteration-order ambiguity, or floating-point nondeterminism may leak into the simulation path.
 
-    *   *Implementation:* Store `{ time, units, owner, level, rate, upgrading }`
-        in a circular buffer (size ~50).
-    *   *Interpolation:* Find the checkpoint just before `Perceived Time` and
-        simulate production forward to `Perceived Time`.
+Given this, the entire game is a pure function of `(seed, command log)`. That single fact is what makes the next two features cheap and correct:
 
-*   **Production Levels:**
+- **Replay** is just the seed plus the log; re-simulating reproduces the game exactly.
+- **Multiplayer** is lockstep: peers exchange commands and each simulates the same steps to the same result.
 
-    *   **Level 0:** Rate 0, Cap 50, Cost 0 (Neutral/Unoccupied).
-    *   **Level 1:** Rate 0.4/sec, Cap 100, Cost 80.
-    *   **Level 2:** Rate 1.0/sec, Cap 250, Cost 250.
-    *   **Level 3:** Rate 2.4/sec, Cap 600, Cost 600.
-    *   **Level 4:** Rate 6.0/sec, Cap 1500, Cost 0 (Max).
-    *   **Neutral Rule:** Neutral Suns (Owner 0) do **not** produce units unless
-        they are at least **Level 2**.
+Treat any divergence between two runs of the same seed and log as a determinism bug, not a rounding quirk to be papered over.
 
-*   **Upgrading:**
+---
 
-    *   Takes **25 seconds**.
-    *   Cost is deducted immediately.
-    *   If the Sun is captured or hostile units arrive during upgrade, the
-        upgrade timer is reset to 0 (cancelled).
+## 3. Suns and the economy
 
-### **2. Fleets**
+Suns are the production nodes and the only thing you own. A sun has an owner, a position, a level, and a (fractional) unit count. Owned suns produce units up to a cap; production pauses at the cap.
 
-Fleets are groups of units moving between Suns.
+| Level | Rate (units/s) | Cap | Cost to reach |
+|------:|---------------:|----:|--------------:|
+| 0 | 0 | 50 | — (neutral) |
+| 1 | 0.4 | 100 | 80 |
+| 2 | 1.0 | 250 | 250 |
+| 3 | 2.4 | 600 | 600 |
+| 4 | 6.0 | 1500 | — (max) |
 
-*   **Attributes:** `id`, `owner`, `sourcePos`, `targetSunId`, `units`,
-    `launchTime`, `arrivalTime`, `targetPos`, `redirected` (boolean).
+- **Neutral suns** (unowned) sit at level 1 by default and do not grow. A neutral sun only produces if map generation seeded it at level 2 or higher. Capturing a sun lets it produce normally.
+- **Upgrading** costs the listed amount immediately and takes 25 seconds. A hostile arrival during an upgrade cancels it (the spent units are already gone).
+- Several techs modify a sun's rate, cap, or upgrade time (see §6). Those modifiers apply only to suns currently linked into your command network.
 
-*   **Movement:** Linear interpolation from Source to Target.
+These numbers are the balance contract; keep them unless you are intentionally rebalancing.
 
-*   **Visibility:** A fleet is only drawn if the current time falls within its
-    "Perceived Visibility Window":
+---
 
-    *   Start: `Launch Time + (Distance(Source, Homeworld) / C)`
-    *   End: `Arrival Time + (Distance(Target, Homeworld) / C)`
-    *   *Grace Period:* Add a small buffer (e.g., 0.5s) to the end time to
-        prevent flickering on arrival.
+## 4. Fleets and movement
 
-*   **Interpolation:** You must calculate the fleet's position at `Perceived
-    Time`.
+A fleet is a group of units in transit from one sun to another. It moves in a straight line at the fleet speed and fights or reinforces when it arrives in the true state.
 
-### **3. Commands**
+**Perceived visibility.** A fleet is only drawn to an observer during the window when its light would have reached them — roughly from (launch + distance(source, observer home)/C) to (arrival + distance(target, observer home)/C), with a small grace period at the end so arrivals don't flicker out. An observer can be unable to see a fleet that has, in truth, already arrived.
 
-*   **Attack:** Sends a fleet from a source Sun to a target Sun.
+**Emission control ("quiet" fleets).** The player can launch fleets dark. A quiet fleet trades speed for stealth: it moves slower but enemies perceive it even later than light-lag alone would dictate. This is the seed of a whole strategic layer that the Deception and Forecast tech domains build on (§6). The base trade-off is required; its exact magnitudes are tunable.
 
-    *   **Delay:** The command signal travels from Homeworld to Source Sun. The
-        fleet launches only when the signal arrives.
+---
 
-*   **Redirect:** Changes a fleet's destination mid-flight.
+## 5. Commands
 
-    *   **Delay:** Signal travels from Homeworld to the fleet's *future
-        intercept position*.
-    *   *Implementation:* To find the intercept point, iteratively approximate
-        the time where `Distance(Homeworld, FleetPos(t)) / C + CurrentTime ==
-        t`. Use 3 iterations for sufficient accuracy.
-    *   *Execution:* When the command arrives at the intercept point:
-        1.  The old fleet is marked as `redirected` (stops fighting/arriving).
-        2.  A **NEW** fleet is created starting from that exact position,
-            heading to the new target.
-        3.  Visually, the old fleet "vanishes" (or stops) and the new one
-            appears. In code, set the old fleet's `targetPos` to its current
-            position and `arrivalTime` to `now` to effectively terminate it.
+All player and AI intents go through one ordered, logged path. The command set:
 
-*   **Upgrade:** Signal travels from Homeworld to Sun. Upgrade starts on
-    arrival.
+- **Attack** — send units from a source sun to a target. Double-click sends everything; a right-click send commits half. The order leaves your capital and the fleet launches only when the signal reaches the source.
+- **Coordinated strike** — one order launching from several of your suns at once. With the Logistics capstone, the launches are timed so the fleets *arrive* together despite different distances.
+- **Redirect** — retarget a fleet in flight. The order takes effect at the light-delayed point where it actually catches the fleet, not instantly; from there a new leg begins toward the new target. The interception is necessarily approximate — pick a method and accuracy; the requirement is that redirects respect the same signal delay as every other order.
+- **Split** — divide an in-flight fleet so you can feint with one half. (Unlocked by a Logistics tech.)
+- **Upgrade** — raise a sun's level; begins when the order arrives.
+- **Dedicate** — flip owned suns between producing units and funding research (§6).
+- **Set research** — choose the active tech.
 
-### **4. Combat**
+Every command is gated by the command network: you can only issue it from or to suns you currently command (§6). The light delay on a command is the distance the signal must cover from your capital, so nearer orders land sooner — a real consideration when your frontier is far away.
 
-*   **Logic:** Happens in **True State** instantly when a fleet arrives at a
-    hostile Sun.
+---
 
-*   **Resolution:** Simultaneous damage.
+## 6. The command network and relay range
 
-    *   Sort forces by size (descending).
-    *   Subtract the size of the *smallest* force from *all* present forces.
-    *   Repeat until only one faction remains.
+You do not command every sun you own. You command the ones **linked back to your capital through space you currently control**, relayed sun to sun, where each hop is within a finite **relay range**. A sun you own but can't currently reach through the network is stranded: it still produces and defends, but you can't give it orders or route through it.
 
-*   **Visuals:** Combat explosions must be rendered at the **Perceived Time** of
-    the battle. Store `battleEvents` (timestamps) on the Sun and keep them for
-    at least 2 minutes to ensure they are seen even with max delay.
+This turns territory into a connectivity problem and makes range a resource:
 
-### **5. Scoring & Win Condition**
+- The network is computed over **perceived** ownership — you route through the suns you *believe* you still hold, which may be stale.
+- Base relay range is tied to how far apart stars are (with a floor); it is not infinite, and on an average map your reach falls short of the whole galaxy.
+- **Signals research extends range** (Tightbeam ×1.4, Command Throughput a further ×1.2), and other techs cut command latency or jam the enemy's range. Reaching a contested star can require investing in range before you can act there at all — the gap is a real obstacle, not flavor.
+- A toggle shows the network overlay so the player can see which suns are live and where the edge is.
 
-*   **Score:** Sum of units on owned Suns + units in active Fleets (excluding
-    `redirected` fleets).
-*   **Win:** Player is alive (score > 0) AND all AI factions are eliminated
-    (score <= 0).
-*   **Defeat:** Player is eliminated (score <= 0).
+This mechanic is required and is what the tutorial's research lesson is built around (§11).
 
-### **6. Map Generation**
+---
 
-*   **Distribution:** Procedural generation within `GALAXY_RADIUS`.
+## 7. Research and the tech tree
 
-    *   *Density:* Higher density near the center. Rejection sampling:
-        `threshold = (4 - 3*r/R)/4`.
-    *   *Spacing:* Ensure `MIN_SUN_SPACING` between Suns.
+A second economy runs alongside units. You **dedicate** owned, linked suns to research: their production stops feeding unit growth and instead funds a shared research bank. Spend the bank on a tech tree; a tech completes when the bank reaches its cost.
 
-*   **Sun Types:**
+The tree has **five domains**, each a spine → two forks → capstone. The spine unlocks the forks; the capstone requires a fork. Costs by tier: spine 120, fork 280, capstone 650. Most Industry and Logistics effects roll out per sun across your linked network rather than applying instantly everywhere.
 
-    *   20% Chance: Level 2, 60 Units.
-    *   30% Chance: Level 1, 30 Units.
-    *   50% Chance: Level 1, 15 Units.
+The exact multipliers below are the current balance and are tunable; the *strategic role of each domain* is the requirement, because together they are the game's depth.
 
-*   **Homeworlds:**
+**Signals — reach and routing.** Tightbeam Relays (range ×1.4) · Command Throughput (range ×1.2 again) · Mesh Routing (orders ~15% sooner, resists jamming) · ★ Entangled Relay Pair (a zero-latency, jam-resistant lane from capital to frontier).
 
-    *   Placed at `GALAXY_RADIUS * HOMEWORLD_RIM_FACTOR`.
-    *   Equally spaced angles around the galaxy.
-    *   The nearest generated Sun is converted to a Homeworld (Level 1, 50
-        Units, Owner set to Faction).
+**Industry — output.** Refined Yields (+25% production) · Deep Reservoirs (+50% cap) · Rapid Assembly (upgrades in half the time) · ★ Industrial Core (a further +40% production and cap).
 
---------------------------------------------------------------------------------
+**Logistics — movement.** Tuned Drives (+30% fleet speed) · Fleet Division (enables splitting fleets) · Course Computers (redirect at greater range, tighter intercepts) · ★ Chronosynced Strike (multi-sun attacks arrive together).
 
-## **III. Visuals & Rendering (PixiJS)**
+**Deception — hiding your moves.** Emission Control (quiet fleets run darker, lose less speed) · Ghost Drives (quiet fleets go fully dark at full speed) · Holographic Spoofing (decoys delay an enemy spotting *any* of your fleets) · ★ Dead-Man's Beacon (captured suns keep broadcasting their old owner for a while).
 
-The aesthetic is "Minimalist Space Ambient". Background is black (`#000000`).
+**Forecast — seeing through the lag.** Light-Echo Forensics (extrapolate visible enemy fleet headings; see partly through emission control) · Predictive Telemetry (estimate an enemy sun's *present* strength, not its stale image) · Signal Triangulation (locate and mark enemy capitals) · ★ Interference Field (jam enemy command range unless they run Mesh Routing or an Entangled Pair).
 
-### **1. Visual Time Clamping**
+Deception and Forecast are deliberately opposed: one degrades what the enemy can perceive, the other claws perception back. Keep that tension.
 
-*   **Important:** When the game speed is very high (e.g., > 5x), visual effects
-    like explosions and solar flares can become too fast to see.
-*   **Implementation:** Calculate a `visualDt` for rendering effects.
-    *   `visualDt = (GAME_SPEED > 5.0) ? dt * (5.0 / GAME_SPEED) : dt`
-    *   Use this `visualDt` for updating explosion animations and solar flare
-        lifecycles.
+---
 
-### **2. Sun Rendering**
+## 8. Combat, scoring, and victory
 
-*   **Glow:** Create a texture using a separate HTML Canvas with a
-    `createRadialGradient` (white to transparent). Use `PIXI.Sprite` with
-    `BLEND_MODES.ADD`.
+**Combat** happens in the true state the instant a hostile fleet arrives, and resolves as simultaneous mutual attrition: repeatedly remove the size of the smallest force present from every force, until one side remains. This rule is required — it makes reinforcement timing and combined arrivals matter. The resulting explosion is shown to each observer at *their* perceived time, which can be well after the battle actually happened.
 
-*   **Core:** A `PIXI.Graphics` polygon. Use sine waves (noise) on the radius to
-    make it wobble/animate over time.
+**Score** is the sum of a faction's units on its suns and in its live fleets.
 
-    *   *Formula:* `radius + sin(theta*5 + time)*0.5 + sin(theta*11 -
-        time*1.5)*0.25`
+**Victory** is the player surviving while every AI faction is eliminated. **Defeat** is the player's score reaching zero. A defeated player may keep watching the galaxy play out.
 
-*   **Rings:** `PIXI.Graphics` rings that appear when upgrading (Yellow, pulsing
-    alpha).
+---
 
-*   **Solar Flares:** For non-neutral suns, randomly spawn quadratic curves
-    erupting from the surface. Animate their life/height using `visualDt`.
+## 9. Map generation
 
-*   **Swarm:** Orbiting particles (`PIXI.Sprite`) representing units.
+Generate stars procedurally inside a circular galaxy, denser toward the center, with a minimum spacing between them. Seed a minority of stars at higher level/garrison so some neutral territory is worth more and is harder to take. Place each faction's homeworld near the rim, spaced evenly by angle, by promoting the nearest star to a level-1 capital with a starting garrison.
 
-    *   *Count:* `Math.min(Math.floor(units / 2), 50)`.
-    *   *LOD:* Hide individual particles if Zoom is low (e.g., < 0.3). Show only
-        the number label.
+The distribution shape (denser core), the spacing floor, and rim placement are the requirements. The exact density curve, the seed-richness probabilities, and the spacing value are balance dials — current defaults are in §13.
 
-*   **Label:** Text showing unit count (integer).
+---
 
-### **3. Fleet Rendering**
+## 10. AI
 
-*   **Visual:** A swarm of particles trailing behind a center point.
+Each AI plays on its own perceived state but acts on the true state, re-deciding at irregular intervals so factions don't move in lockstep. Its instincts: expand toward near, weak, or neutral targets it can actually reach and overwhelm; upgrade safe, wealthy suns; and invest in research over a match. Crucially, the AI issues through the same logged command path the player does — that is what lets a replay reproduce an AI-driven game exactly, so it is a determinism requirement, not just tidiness.
 
-    *   *Implementation:* Use a `PIXI.Container` and a manual particle pool
-        (array) to avoid garbage collection.
-    *   *Movement:* Particles should drift *opposite* to the fleet's movement
-        vector to create a trail effect.
-    *   *Count:* `Math.min(Math.floor(units), 80)`.
+A single **difficulty dial** (roughly 0 to 1) scales how aggressive and how sharp the AI is, and at lower settings injects hesitation and mistakes (occasionally freezing a decision, mistargeting, or under-committing). The dial and its felt effect are required; the specific heuristics and thresholds are yours.
 
-*   **Label:** Text showing fleet size.
+---
 
-*   **Color:** Matches the owner's faction color.
+## 11. Game modes and the tutorial
 
-### **4. UI Overlays (PixiJS)**
+The title is a hub. A landing screen offers four entries — **Tutorial**, **Solo Skirmish**, **Multiplayer**, **Watch a Replay** — plus a **Controls & hotkeys** page; every sub-screen returns to the landing. Solo Skirmish exposes the match settings (star count, opponents, game speed) before launch.
 
-*   **Selection:** Draw rings around selected Suns/Fleets.
-*   **Command Lines:** When a command is issued, draw a line/dot traveling from
-    the Homeworld to the target to visualize the signal delay.
-*   **Explosions:** `PIXI.Graphics` circle that expands and fades out (shockwave
-    effect). Use `visualDt` for the animation.
+The in-match HUD shows a live leaderboard and a speed indicator, and toggles for help, the command-network overlay, and research. Pausing and game-over both surface a score-over-time graph for all factions and the appropriate navigation (resume/restart/menu, or play-again/observe/menu).
 
-### **5. Minimap (Canvas 2D)**
+**The tutorial** is a guided solo match on a fixed seed that teaches the core ideas in order: select a sun; build and upgrade; capture a neighbor; *watch an order take time to arrive*; reveal the command network; and research. It has firm pedagogical requirements, because earlier drafts got these wrong:
 
-*   Render a simplified view of the galaxy in the bottom-right corner.
-*   Show the camera viewport rectangle.
-*   Allow clicking/dragging on the minimap to move the camera.
-*   Label below minimap: "PERCEIVED REALITY".
+- A step that asks for an action advances **only** when the player performs that action (or the outcome occurs). It must not offer a manual "next" that skips the task. Pure explanation steps may offer "Continue." The player can exit at any time.
+- The research lesson must require **actually completing a tech that is needed to make progress** — not merely opening the tree. Concretely: the player holds an outpost stranded just beyond relay range, and only researching Tightbeam Relays brings it into the network so it can be commanded. The expected tech is highlighted in the tree while that step is active.
+- Advancement keys off the player's *action*, not the resulting engine state, since light-lag means the consequence is delayed.
 
---------------------------------------------------------------------------------
+The number of steps and the exact copy are the implementer's. The teaching order and the two rules above are the requirements.
 
-## **IV. User Interface (HTML/Tailwind)**
+---
 
-Use a dark theme (`bg-gray-900`, `text-blue-400`, `border-blue-900`) for all UI
-panels.
+## 12. Multiplayer
 
-### **1. Title Screen**
+Multiplayer reuses the deterministic engine: once a match starts, peers run **lockstep**, exchanging commands and simulating identically. The game owns the lobby and lifecycle; the network transport is a seam.
 
-*   Title: "LIGHT SPEED"
-*   Description of the mechanics.
-*   **Controls List:** WASD/Pan, Scroll/Zoom, Drag Select, etc.
-*   **Settings Sliders:**
+- **Lobby model.** A host holds the authoritative roster of slots, each slot a human, an AI, or open. Players reach a host by entering a code or by picking a host from a public game browser. The host assigns factions and starts the match; from there the engine drives the game over exchanged commands.
+- **Transport is pluggable.** The spec requires a clean, documented seam for advertising/hosting/joining, the lobby message protocol, and handing the started match its transports — so a real transport (WebRTC, a relay, etc.) can be dropped in without touching game logic. Stubs that satisfy the seam are acceptable scaffolding; fakes that pretend to be networked are not.
+- **Restrictive networks.** Plain peer-to-peer fails behind many corporate proxies; a usable build needs a relay/TURN path, not STUN alone. Note this in the seam.
 
-    *   **Stars:** Range 0-100. Formula: `Math.round(20 + (val/100)^2 * 980)`.
-    *   **Opponents:** Range 1-20.
-    *   **Game Speed:** Range 0-100. Formula: `0.1 * 500^(val/100)`.
+The determinism contract in §2 is precisely what makes lockstep correct, which is why it is non-negotiable.
 
-*   **Start Button.**
+---
 
-### **2. HUD**
+## 13. Replay
 
-*   **Leaderboard (Top-Left):** List factions by score. Update every 0.5s. Show
-    "eliminated" status if score < 1.
-*   **Help Panel (Toggle 'H'):** Quick reference for controls.
-*   **Speed Indicator:** Fades in/out when speed changes.
+A finished game can emit a **replay code**: the seed, the match settings, and the full command log, encoded compactly. *Watch a Replay* takes such a code, re-creates the galaxy from the seed, and re-simulates by replaying the logged commands (the live AI is silent during playback — its decisions are already in the log). The guarantee is exact reproduction of the visible game.
 
-### **3. Pause / Game Over Screens**
+A malformed code must fail gracefully rather than crash. Because replays re-simulate in the same engine, in-app playback is exact; sharing codes across genuinely different platforms is the one place floating-point reproduction is not guaranteed, which is worth a word in the UI if codes are ever shared.
 
-*   **Score Graph:** A `<canvas>` chart showing unit counts over time for all
-    factions.
+---
 
-    *   *Data Collection:* Record scores every **1.0 second** in the game
-        engine.
-    *   *Drawing:* Draw axes, time labels (X), score labels (Y).
-    *   *Interaction:* Implement mouse hover detection. Find the closest data
-        point to the mouse cursor. Draw a circle at that point and a tooltip box
-        showing "Faction: Score".
-    *   *Colors:* Player line width 4, AI line width 2.
-    *   *Implementation:* Use `mousemove` and `mouseleave` event listeners on
-        the canvas to track `graphHoverData` and trigger redraws.
+## 14. Controls
 
-*   **Buttons:**
+| Input | Action |
+|---|---|
+| Left click | Select a sun |
+| Left drag | Box-select |
+| Shift + click | Add / remove from selection |
+| Double-click target | Attack with 100% of selected units |
+| Right-click target | Attack with 50%, or redirect selected fleets |
+| Scroll | Zoom, centered on cursor |
+| WASD / arrows | Pan (edge-pan in fullscreen) |
+| U | Upgrade selected |
+| X | Split selected fleet |
+| N | Toggle command-network overlay |
+| R | Toggle research / tech tree |
+| G | Dedicate selected suns to research |
+| Q | Toggle quiet (dark) orders |
+| T | Toggle all fleet trajectories |
+| V | Toggle signal-intel view (what a sun perceives of you) |
+| H / L | Toggle help / leaderboard |
+| M or Esc | Pause menu |
+| F | Fullscreen |
+| +/− | Game speed |
+| Shift + D | Debug (force win/lose) |
 
-    *   **Pause:** Resume, Restart, Main Menu.
-    *   **Game Over:** Play Again, Continue Observing (if lost), Main Menu.
+Use unified pointer handling so touch and mouse both work, and suppress the browser context menu over the play area. The mapping is the UX contract; the input plumbing is yours.
 
-### **4. Debug Menu (Shift+D)**
+---
 
-*   Buttons: "Force Win", "Force Lose".
+## 15. Visual and audio direction
 
---------------------------------------------------------------------------------
+The look is minimalist ambient space: black background, factions distinguished by color, suns rendered as glowing bodies that subtly wobble and flare, fleets as trailing particle swarms, upgrades as pulsing rings. Level-of-detail by zoom (drop per-unit particles and fine labels when far out). A minimap in the corner shows the galaxy and viewport and is labeled to remind the player it, too, is **perceived reality**.
 
-## **V. Controls & Input**
+Two perceptual requirements matter more than any rendering choice:
 
-*   **Mouse:**
+- **Effects play at perceived time.** Explosions, flares, and command-signal pulses appear when their light reaches the viewer — not when the underlying event occurred in the true state.
+- **Effects stay legible at speed.** At very high game speeds, slow the *visual* lifecycle of transient effects relative to the simulation so they remain visible. A reasonable approach is to scale effect animation time down once game speed passes a threshold.
 
-    *   **Left Click:** Select Sun. (Threshold: Drag distance < 5px).
-    *   **Left Drag:** Box Select Suns.
-    *   **Double Click:** Attack Target with **100%** of units from selected
-        Suns. (Implement by checking `Date.now() - lastClickTime < 300` in a
-        `pointertap` or `pointerup` handler).
-    *   **Right Click:**
-        *   On Empty Space: Pan Camera (if dragged).
-        *   On Sun (with selection): Attack (send **50%** units) or Redirect
-            Fleets.
-    *   **Shift + Click:** Add/Remove from selection.
-    *   **Scroll:** Zoom In/Out (centered on mouse).
+How you build glows, particles, trails, and shockwaves is entirely open.
 
-*   **Keyboard:**
+---
 
-    *   **WASD / Arrow Keys:** Pan Camera.
-    *   **U:** Upgrade selected Suns.
-    *   **F:** Toggle Fullscreen. (Implement edge panning: if mouse is within
-        15px of edge, pan camera).
-    *   **H:** Toggle Help.
-    *   **L:** Toggle Leaderboard.
-    *   **M:** Toggle Pause Menu.
-    *   **+/-:** Adjust Game Speed (Support Numpad keys).
+## 16. Reference constants (current defaults, tunable)
 
-*   **Events:** Use `pointerdown`, `pointermove`, `pointerup` on the Pixi stage
-    for unified touch/mouse handling. Prevent default context menu.
+| Constant | Value | Constant | Value |
+|---|---|---|---|
+| Galaxy radius | 950 | Speed of light C | 60 |
+| Fleet speed | 20 | Quiet-fleet speed ×| 0.6 |
+| Min sun spacing | 105 | Homeworld rim factor | 0.9 |
+| Upgrade duration | 25 s | Fixed sim step | 0.05 s |
+| Zoom start / min / max | 1.5 / 0.5 / 10 | Battle-event retention | 120 s |
+| Tightbeam range × | 1.4 | Throughput range × | 1.2 |
+| Refined production × | 1.25 | Tuned fleet speed × | 1.3 |
+| Interference (enemy range) × | 0.8 | Mesh latency × | 0.85 |
 
---------------------------------------------------------------------------------
+Faction colors: neutral white, player blue, AIs a fixed palette extended by generated hues past twelve factions. Spine/fork/capstone research costs: 120 / 280 / 650.
 
-## **VI. AI Logic**
+---
 
-The AI operates in the **True State** but uses **Perceived State** for decision
-making.
+## 17. Left to the implementer
 
-*   **Update Interval:** Randomly every 3-7 seconds.
+The following are intentionally unspecified — make reasonable engineering choices:
 
-*   **Upgrade:** If it has a safe Sun with `Units > 1.5 * Cost` and `Level < 3`,
-    upgrade.
+- All data structures, including how perceived history is stored and reconstructed, and the redirect interception method and its accuracy.
+- Class and module layout, the game loop's internals, and any object pooling or performance work.
+- Every rendering technique (glow, particles, trails, shockwaves, minimap drawing).
+- Exact AI heuristics, thresholds, and scoring, beyond the behavior and difficulty dial in §10.
+- The network transport behind the multiplayer seam, and the on-the-wire encoding of replay codes.
+- Tutorial step count and copy, within the rules of §11.
+- Final balance tuning of any number marked tunable here.
 
-*   **Attack:** If a Sun has `> 30` units:
-
-    *   **Target Scoring:**
-        *   Base Score: `-Distance` (closer is better).
-        *   Bonus: `+500` if target is Neutral.
-        *   Penalty: `-TargetUnits * 10`.
-    *   **Attack Condition:** `SourceUnits > TargetUnits * 1.2 + 10`.
-    *   **Action:** Attack best target with **60%** of units.
-
---------------------------------------------------------------------------------
-
-## **VII. Constants & Configuration**
-
-*   `GALAXY_WIDTH/HEIGHT`: 2000
-*   `GALAXY_RADIUS`: 950
-*   `LIGHT_SPEED_C`: 60
-*   `UNIT_SPEED`: 20
-*   `ZOOM_START`: 1.5
-*   `MIN_ZOOM`: 0.5
-*   `MAX_ZOOM`: 10.0
-*   `LOD_ZOOM_THRESHOLD`: 2.5
-*   `UPGRADE_DURATION`: 25.0
-*   `MIN_SUN_SPACING`: 80
-*   `HOMEWORLD_RIM_FACTOR`: 0.9
-*   `COLORS`:
-
-    *   Neutral: `0xffffff`
-    *   Player: `0x3b82f6` (Blue-500)
-    *   AI Colors (Fixed): `[0xef4444, 0x22c55e, 0xa855f7, 0xf97316, 0xeab308,
-        0x06b6d4, 0xec4899, 0x6366f1, 0x14b8a6, 0xf43f5e, 0x84cc16, 0x8b5cf6]`
-    *   *Fallback:* For >12 AIs, generate colors using HSL (Hue = index * 137.5
-        deg). Implement a helper `hslToHex` function for this.
-
---------------------------------------------------------------------------------
-
-## **VIII. Implementation Strategy**
-
-1.  **Class Structure:**
-
-    *   `Sun`, `Fleet`, `Command` (Data classes).
-    *   `GameEngine` (Logic, True State, History).
-    *   `GameRenderer` (PixiJS, Perceived State).
-    *   `AIController` (One per AI faction).
-
-2.  **Loop:** Use `requestAnimationFrame`.
-
-    *   Calculate `realDt` (wall clock time) for UI/Camera updates.
-    *   Calculate `dt = realDt * CONSTANTS.GAME_SPEED` for game logic updates.
-
-3.  **Performance:**
-
-    *   Use manual object pooling for fleet particles (array of sprites) to
-        avoid garbage collection.
-    *   Implement LOD for Sun labels/particles based on zoom.
-
-4.  **State Management:**
-
-    *   `Sun.history` is critical. Push checkpoints on significant events
-        (production, battle, upgrade).
-    *   `getPerceivedState(observerPos, time)` method on Sun class is the core
-        of the "Light Speed" mechanic.
-
-**Output:** Provide the complete, runnable HTML file code.
+If a choice would break determinism (§2) or the two-directional light delay (§1), it is not a free choice — those are the spine of the game.
